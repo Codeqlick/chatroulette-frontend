@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpiar Storage</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0.5rem;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .success {
+            color: green;
+            margin-top: 1rem;
+        }
+        .error {
+            color: red;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Limpiar Storage</h1>
+        <p>Este script limpiará todos los datos guardados en localStorage y sessionStorage.</p>
+        <button onclick="clearStorage()">Limpiar Storage</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function clearStorage() {
+            try {
+                // Limpiar localStorage
+                localStorage.clear();
+                
+                // Limpiar sessionStorage
+                sessionStorage.clear();
+                
+                // Mostrar resultado
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = '<p class="success">✅ Storage limpiado correctamente. Puedes cerrar esta página.</p>';
+                
+                console.log('Storage limpiado correctamente');
+            } catch (error) {
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = '<p class="error">❌ Error al limpiar storage: ' + error.message + '</p>';
+                console.error('Error al limpiar storage:', error);
+            }
+        }
+        
+        // Limpiar automáticamente al cargar la página
+        window.addEventListener('load', () => {
+            clearStorage();
+        });
+    </script>
+</body>
+</html>
+

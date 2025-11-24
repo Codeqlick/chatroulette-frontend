@@ -1,0 +1,64 @@
+{
+  "name": "chatroulette-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Frontend React para plataforma Chatroulette",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --project tsconfig.build.json && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\""
+  },
+  "dependencies": {
+    "@types/uuid": "10.0.0",
+    "axios": "1.7.9",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.28.0",
+    "socket.io-client": "4.8.1",
+    "uuid": "13.0.0",
+    "zod": "3.24.1",
+    "zustand": "5.0.2"
+  },
+  "devDependencies": {
+    "@eslint/config-array": "0.19.1",
+    "@eslint/object-schema": "^3.0.0",
+    "@playwright/test": "1.49.1",
+    "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/react": "16.1.0",
+    "@testing-library/user-event": "14.5.2",
+    "@types/node": "^22.0.0",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "@typescript-eslint/eslint-plugin": "8.18.2",
+    "@typescript-eslint/parser": "8.18.2",
+    "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/coverage-v8": "4.0.10",
+    "autoprefixer": "10.4.20",
+    "eslint": "9.18.0",
+    "eslint-config-prettier": "9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-react-hooks": "5.1.0",
+    "eslint-plugin-react-refresh": "0.4.16",
+    "glob": "11.0.0",
+    "jsdom": "^25.0.1",
+    "postcss": "8.4.49",
+    "prettier": "3.4.2",
+    "rimraf": "6.0.1",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.7.2",
+    "vite": "7.2.2",
+    "vitest": "4.0.10"
+  },
+  "engines": {
+
+    "node": ">=22.0.0"
+  }
+}
