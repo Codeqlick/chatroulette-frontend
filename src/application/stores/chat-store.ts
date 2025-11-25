@@ -4,12 +4,12 @@ import { ChatMessage } from '@domain/entities/session';
 interface ChatState {
   messages: ChatMessage[];
   sessionId: string | null;
-  partner: { id: string; name: string; avatar: string | null } | null;
+  partner: { username: string; name: string; avatar: string | null } | null;
   isTyping: boolean;
   isLoadingMessages: boolean;
   addMessage: (message: ChatMessage) => void;
   updateMessage: (messageId: string, updates: Partial<ChatMessage>) => void;
-  setSession: (sessionId: string, partner: { id: string; name: string; avatar: string | null }) => void;
+  setSession: (sessionId: string, partner: { username: string; name: string; avatar: string | null }) => void;
   clearSession: () => void;
   setTyping: (isTyping: boolean) => void;
   loadMessages: (messages: ChatMessage[]) => void;

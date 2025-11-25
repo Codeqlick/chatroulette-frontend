@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Button } from './Button';
 import { reportService, type ReportCategory } from '@infrastructure/api/report-service';
+import { logger } from '@infrastructure/logging/frontend-logger';
 
 interface ReportModalProps {
-  sessionId: string;
+  sessionId?: string; // Optional: for session-based reports
+  username?: string; // Optional: for user-based reports (without session)
   isOpen: boolean;
   onClose: () => void;
   onReportSubmitted: () => void;
@@ -18,6 +20,7 @@ const REPORT_CATEGORIES: { value: ReportCategory; label: string }[] = [
 
 export function ReportModal({
   sessionId,
+  username,
   isOpen,
   onClose,
   onReportSubmitted,
@@ -28,6 +31,12 @@ export function ReportModal({
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) {
+    return null;
+  }
+
+  // Validate that either sessionId or username is provided
+  if (!sessionId && !username) {
+    logger.error('Either sessionId or username must be provided');
     return null;
   }
 
@@ -43,19 +52,30 @@ export function ReportModal({
     setLoading(true);
 
     try {
-      await reportService.createReport({
-        sessionId,
-        category,
-        description: description.trim() || null,
-      });
+      if (sessionId) {
+        // Session-based report
+        await reportService.createReport({
+          sessionId,
+          category,
+          description: description.trim() || null,
+        });
+      } else if (username) {
+        // User-based report (without session)
+        await reportService.createUserReport(username, {
+          category,
+          description: description.trim() || null,
+        });
+      }
 
       onReportSubmitted();
       onClose();
       // Reset form
       setCategory('');
       setDescription('');
-    } catch (err) {
-      if (err instanceof Error) {
+    } catch (err: any) {
+      if (err?.response?.data?.error?.message) {
+        setError(err.response.data.error.message);
+      } else if (err instanceof Error) {
         setError(err.message || 'Error al enviar el reporte');
       } else {
         setError('Error al enviar el reporte');

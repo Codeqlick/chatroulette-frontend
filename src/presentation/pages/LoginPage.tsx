@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore, useAuthHydrated } from '@application/stores/auth-store';
+import { useBanStore } from '@application/stores/ban-store';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -14,11 +15,18 @@ export function LoginPage(): JSX.Element {
   const login = useAuthStore((state) => state.login);
   const hasHydrated = useAuthHydrated();
   const navigate = useNavigate();
+  const setBanInfo = useBanStore((state) => state.setBanInfo);
 
   // Navegar después de que el estado se haya hidratado
   useEffect(() => {
     if (shouldNavigate && hasHydrated) {
+      const state = useAuthStore.getState();
+      // Si el usuario es admin, redirigir al panel de administración
+      if (state.user?.role === 'ADMIN') {
+        navigate('/admin');
+      } else {
       navigate('/videochat');
+      }
       setShouldNavigate(false);
     }
   }, [shouldNavigate, hasHydrated, navigate]);
@@ -32,8 +40,50 @@ export function LoginPage(): JSX.Element {
       await login(email, password);
       // Esperar a que el estado se hidrate antes de navegar
       setShouldNavigate(true);
-    } catch (err) {
+    } catch (err: any) {
+      // Manejar errores específicos del backend
+      if (err?.response?.data?.error?.message) {
+        const errorMessage = err.response.data.error.message;
+        const statusCode = err.response?.status;
+
+        // Mensajes específicos según el código de estado
+        if (statusCode === 403) {
+          // Email no verificado o usuario baneado
+          if (errorMessage.includes('Email not verified')) {
+            setError('Tu email no está verificado. Por favor verifica tu email antes de iniciar sesión.');
+          } else if (errorMessage.includes('Banned')) {
+            const banDetails = err.response?.data?.error?.details;
+            setBanInfo({
+              email,
+              details: {
+                reason: banDetails?.reason,
+                bannedAt: banDetails?.bannedAt,
+                bannedUntil: banDetails?.bannedUntil,
+              },
+            });
+            navigate('/banned', { replace: true });
+            setError('Tu cuenta ha sido suspendida.');
+          } else {
+            setError(errorMessage);
+          }
+        } else if (statusCode === 401) {
+          // Credenciales inválidas
+          if (errorMessage.includes('Invalid email or password') || errorMessage.includes('INVALID_CREDENTIALS')) {
+            setError('Email o contraseña incorrectos. Verifica tus credenciales.');
+          } else {
+            setError(errorMessage);
+          }
+        } else if (statusCode === 429) {
+          // Rate limit
+          setError('Demasiados intentos fallidos. Por favor espera un momento antes de intentar nuevamente.');
+        } else {
+          // Otros errores - mostrar mensaje del backend
+          setError(errorMessage);
+        }
+      } else {
+        // Error sin respuesta del servidor
       setError('Error al iniciar sesión. Verifica tus credenciales.');
+      }
       setLoading(false);
     }
   };

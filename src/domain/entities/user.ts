@@ -1,5 +1,5 @@
 export interface User {
-  id: string;
+  username: string;
   email: string;
   name: string;
   avatar: string | null;
@@ -11,7 +11,7 @@ export interface User {
 }
 
 export function createUser(data: {
-  id: string;
+  username: string;
   email: string;
   name: string;
   avatar?: string | null;
@@ -21,7 +21,7 @@ export function createUser(data: {
   updatedAt?: Date;
 }): User {
   return {
-    id: data.id,
+    username: data.username,
     email: data.email,
     name: data.name,
     avatar: data.avatar ?? null,

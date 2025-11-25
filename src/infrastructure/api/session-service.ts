@@ -4,7 +4,7 @@ import { apiClient } from './api-client';
 export interface SessionDetailsResponse {
   sessionId: string;
   partner: {
-    id: string;
+    username: string;
     name: string;
     avatar: string | null;
   };
@@ -16,6 +16,7 @@ export interface SessionMessagesResponse {
     id: string;
     sessionId: string;
     senderId: string;
+    senderUsername: string;
     content: string;
     timestamp: string;
     delivered: boolean;

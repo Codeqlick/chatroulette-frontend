@@ -11,7 +11,25 @@ export interface CreateReportRequest {
 export interface CreateReportResponse {
   report: {
     id: string;
-    sessionId: string;
+    sessionId: string | null;
+    reporterId: string;
+    reportedUserId: string;
+    category: ReportCategory;
+    description: string | null;
+    status: string;
+    createdAt: string;
+  };
+}
+
+export interface CreateUserReportRequest {
+  category: ReportCategory;
+  description?: string | null;
+}
+
+export interface CreateUserReportResponse {
+  report: {
+    id: string;
+    sessionId: string | null;
     reporterId: string;
     reportedUserId: string;
     category: ReportCategory;
@@ -25,6 +43,14 @@ export class ReportService {
   async createReport(request: CreateReportRequest): Promise<CreateReportResponse> {
     const response = await apiClient.instance.post<CreateReportResponse>(
       '/reports',
+      request
+    );
+    return response.data;
+  }
+
+  async createUserReport(username: string, request: CreateUserReportRequest): Promise<CreateUserReportResponse> {
+    const response = await apiClient.instance.post<CreateUserReportResponse>(
+      `/reports/user/${encodeURIComponent(username)}`,
       request
     );
     return response.data;

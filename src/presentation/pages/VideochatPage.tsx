@@ -7,9 +7,12 @@ import { webSocketService } from '@infrastructure/websocket/websocket-service';
 import { matchingService } from '@infrastructure/api/matching-service';
 import { sessionService } from '@infrastructure/api/session-service';
 import { WEBSOCKET_EVENTS } from '@config/constants';
-import { ThemeToggle } from '../components/ThemeToggle';
+import { AppHeader } from '../components/AppHeader';
 import { ChatWindow } from '../components/ChatWindow';
 import { Button } from '../components/Button';
+import { SearchingOverlay } from '../components/SearchingOverlay';
+import { useWebRTC } from '../hooks/useWebRTC';
+import { logger } from '@infrastructure/logging/frontend-logger';
 
 export function VideochatPage(): JSX.Element {
   const navigate = useNavigate();
@@ -23,7 +26,50 @@ export function VideochatPage(): JSX.Element {
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [autoSearch, setAutoSearch] = useState(true); // Búsqueda automática por defecto
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const hasClearedSessionRef = useRef(false);
+
+  // Use WebRTC for local video preview (without sessionId)
+  const {
+    localStream,
+    localVideoRef: webrtcLocalVideoRef,
+    startLocalVideo,
+    toggleVideo,
+    toggleAudio,
+    isVideoEnabled,
+    isAudioEnabled,
+  } = useWebRTC(null);
+
+  // Compute ready state - component is ready to show content
+  const isReady = useMemo(() => {
+    // Must have hydrated and not be initializing
+    if (!hasHydrated || isInitializing) {
+      return false;
+    }
+    
+    // Must be authenticated with token
+    if (!isAuthenticated || !accessToken) {
+      return false;
+    }
+    
+    // If we've checked status or initialized, we're ready
+    if (hasCheckedStatus || isInitialized) {
+      return true;
+    }
+    
+    return false;
+  }, [hasHydrated, isInitializing, isAuthenticated, accessToken, hasCheckedStatus, isInitialized]);
+
+  const handleCancelSearch = useCallback(async (): Promise<void> => {
+    setIsSearching(false);
+    setError(null);
+    try {
+      await matchingService.stop();
+    } catch (err) {
+      logger.error('Error stopping matching', { error: err });
+    }
+  }, []);
 
   const startMatching = useCallback(async (): Promise<void> => {
     setError(null);
@@ -47,7 +93,7 @@ export function VideochatPage(): JSX.Element {
               setSession(details.sessionId, details.partner);
               setIsLoadingSession(false);
             } catch (sessionErr) {
-              console.error('Error loading session details:', sessionErr);
+              logger.error('Error loading session details', { error: sessionErr, sessionId: status.sessionId });
               setIsLoadingSession(false);
               setError('Error al cargar la sesión activa.');
             }
@@ -77,11 +123,25 @@ export function VideochatPage(): JSX.Element {
     return undefined;
   }, [hasHydrated]);
 
+  // Start local video immediately when ready
+  useEffect(() => {
+    if (isReady && !sessionId && !localStream) {
+      logger.debug('Starting local video preview');
+      startLocalVideo().catch((err) => {
+        logger.error('Error starting local video', { error: err });
+        setError('Error al acceder a la cámara. Por favor, verifica los permisos.');
+      });
+    }
+  }, [isReady, sessionId, localStream, startLocalVideo]);
+
+
   // Update WebSocket when accessToken changes (only after initialization is complete)
   useEffect(() => {
     if (isInitialized && !isInitializing && isAuthenticated && accessToken) {
       // Update WebSocket token if it changed, but only after initial setup
-      webSocketService.updateToken(accessToken);
+      webSocketService.updateToken(accessToken).catch((error) => {
+        logger.error('Error updating WebSocket token', { error });
+      });
     }
   }, [accessToken, isAuthenticated, isInitializing, isInitialized]);
 
@@ -94,12 +154,13 @@ export function VideochatPage(): JSX.Element {
     // Authentication is now handled by ProtectedRoute, so we can assume user is authenticated here
     if (!isAuthenticated || !accessToken) {
       // This should not happen due to ProtectedRoute, but keep as safety check
-      console.warn('[VideochatPage] User not authenticated, but ProtectedRoute should have handled this');
+      logger.warn('User not authenticated, but ProtectedRoute should have handled this');
       return;
     }
 
     // Limpiar estado de chat solo una vez al inicializar para evitar mostrar datos de sesiones anteriores
-    if (!hasClearedSessionRef.current) {
+    // Pero NO limpiar si ya hay una sesión activa (por ejemplo, después de recargar)
+    if (!hasClearedSessionRef.current && !sessionId) {
       clearSession();
       hasClearedSessionRef.current = true;
     }
@@ -108,11 +169,11 @@ export function VideochatPage(): JSX.Element {
     // But don't block initialization, just log a warning
     let retryTimer: NodeJS.Timeout | undefined;
     if (!user && accessToken) {
-      console.warn('[VideochatPage] User is null but accessToken exists, this might indicate a state hydration issue');
+      logger.warn('User is null but accessToken exists, this might indicate a state hydration issue');
       // Give it a moment and check again, but don't block
       retryTimer = setTimeout(() => {
         if (!user) {
-          console.warn('[VideochatPage] User still null after retry, but continuing anyway');
+          logger.warn('User still null after retry, but continuing anyway');
           // Don't set error, just continue - the user might load later
         }
       }, 1000); // Reduced timeout
@@ -122,95 +183,136 @@ export function VideochatPage(): JSX.Element {
     // Safety timeout to ensure hasCheckedStatus is always set (reduced to 5 seconds)
     const safetyTimeout = setTimeout(() => {
       if (!hasCheckedStatus) {
-        console.warn('[VideochatPage] Initialization timeout reached, setting hasCheckedStatus to true');
+        logger.warn('Initialization timeout reached, setting hasCheckedStatus to true');
         setHasCheckedStatus(true);
         setIsInitialized(true);
         // Don't set error immediately, let it try to continue
       }
     }, 5000); // Reduced from 10 to 5 seconds
 
+    // Connect WebSocket first, then check status
+    const initializeConnection = async (): Promise<void> => {
+      try {
     // Connect WebSocket
-    try {
-    webSocketService.connect(accessToken);
-    } catch (err) {
-      console.error('Error connecting WebSocket:', err);
+        await webSocketService.connect(accessToken);
+        logger.debug('WebSocket connected successfully');
+        
+        // Wait a bit for WebSocket to be fully ready
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        
+        // Check for active session or matching status
+        await checkStatus();
+      } catch (err) {
+      logger.error('Error connecting WebSocket', { error: err });
       setInitializationError('Error al conectar con el servidor. Por favor, recarga la página.');
       setHasCheckedStatus(true);
       clearTimeout(safetyTimeout);
-      return;
-    }
+      }
+    };
 
     // Check for active session or matching status
     const checkStatus = async (): Promise<void> => {
       try {
-        console.log('[VideochatPage] Checking matching status...');
+        logger.debug('Checking matching status');
         const status = await matchingService.getStatus();
-        console.log('[VideochatPage] Matching status:', status);
+        logger.debug('Matching status', { status });
         
         if (status.status === 'matched' && status.sessionId) {
           // User has an active session, load it
+          const activeSessionId = status.sessionId; // Store in const to avoid undefined
           setIsLoadingSession(true);
           try {
-            const details = await sessionService.getSessionDetails(status.sessionId);
+            const details = await sessionService.getSessionDetails(activeSessionId);
             setSession(details.sessionId, details.partner);
             setIsLoadingSession(false);
             setHasCheckedStatus(true);
             setIsInitialized(true);
             clearTimeout(safetyTimeout);
-            console.log('[VideochatPage] Session loaded successfully');
+            logger.debug('Session loaded successfully', { sessionId: activeSessionId });
+            
+            // Join the session room in WebSocket
+            // Wait a bit to ensure WebSocket is fully connected
+            setTimeout(() => {
+              try {
+                if (webSocketService.isConnected()) {
+                  webSocketService.joinRoom(activeSessionId);
+                  logger.debug('Joined session room in WebSocket', { sessionId: activeSessionId });
+                } else {
+                  logger.warn('WebSocket not connected, cannot join room', { sessionId: activeSessionId });
+                }
+              } catch (wsErr) {
+                logger.warn('Error joining session room', { error: wsErr, sessionId: activeSessionId });
+                // Continue even if joining room fails
+              }
+            }, 1000);
           } catch (err) {
-            console.error('[VideochatPage] Error loading session details:', err);
+            logger.error('Error loading session details', { error: err, sessionId: activeSessionId });
             setIsLoadingSession(false);
             clearSession();
             setHasCheckedStatus(true);
             setIsInitialized(true);
             clearTimeout(safetyTimeout);
             // Don't set error, just continue to matching
+            if (autoSearch) {
             await startMatching();
+            }
           }
           return;
         }
         if (status.status === 'searching') {
           // User is already searching
-          console.log('[VideochatPage] User is already searching');
+          logger.debug('User is already searching');
           setIsSearching(true);
           setHasCheckedStatus(true);
           setIsInitialized(true);
           clearTimeout(safetyTimeout);
         } else {
-          // No active session and not searching, start matching automatically
-          console.log('[VideochatPage] No active session, starting matching');
+          // No active session and not searching
+          logger.debug('No active session');
           setHasCheckedStatus(true);
           setIsInitialized(true);
           clearTimeout(safetyTimeout);
-          await startMatching();
+          // Start matching automatically if autoSearch is enabled
+          if (autoSearch) {
+            await startMatching();
+          }
         }
       } catch (err) {
         // Ensure hasCheckedStatus is set even on error
-        console.error('[VideochatPage] Error checking matching status:', err);
+        logger.error('Error checking matching status', { error: err });
         setHasCheckedStatus(true);
         setIsInitialized(true);
         clearTimeout(safetyTimeout);
         // Try to start matching anyway
         try {
-          console.log('[VideochatPage] Attempting to start matching after error');
+          logger.info('Attempting to start matching after error');
+          if (autoSearch) {
         await startMatching();
+          }
         } catch (matchingErr) {
-          console.error('[VideochatPage] Error starting matching:', matchingErr);
+          logger.error('Error starting matching', { error: matchingErr });
           // Don't set initializationError, just set error for user to retry
           setError('Error al iniciar la búsqueda. Por favor, intenta nuevamente.');
         }
       }
     };
 
+    // Start initialization
+    initializeConnection();
+
     // Listen for match found
     const handleMatchFound = (...args: unknown[]): void => {
       const data = args[0] as {
         sessionId: string;
-        partner: { id: string; name: string; avatar: string | null };
+        partner: { username: string; name: string; avatar: string | null };
       };
       setIsSearching(false);
-      setSession(data.sessionId, data.partner);
+      // Smooth transition: fade out overlay first
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setSession(data.sessionId, data.partner);
+        setIsTransitioning(false);
+      }, 300); // 300ms transition
     };
 
     const handleMatchTimeout = (...args: unknown[]): void => {
@@ -231,8 +333,10 @@ export function VideochatPage(): JSX.Element {
       if (data.sessionId === sessionId) {
         clearSession();
         setIsSearching(false);
-        // Restart matching automatically when session ends
-        startMatching();
+        // Restart matching automatically when session ends (if autoSearch enabled)
+        if (autoSearch) {
+          startMatching();
+        }
       }
     };
 
@@ -251,30 +355,10 @@ export function VideochatPage(): JSX.Element {
       webSocketService.off(WEBSOCKET_EVENTS.MATCH_TIMEOUT, handleMatchTimeout);
       webSocketService.off(WEBSOCKET_EVENTS.SESSION_ENDED, handleSessionEnded);
     };
-  }, [isAuthenticated, accessToken, navigate, setSession, clearSession, sessionId, startMatching, isInitializing]);
-
-  // Compute ready state - component is ready to show content
-  const isReady = useMemo(() => {
-    // Must have hydrated and not be initializing
-    if (!hasHydrated || isInitializing) {
-      return false;
-    }
-    
-    // Must be authenticated with token
-    if (!isAuthenticated || !accessToken) {
-      return false;
-    }
-    
-    // If we've checked status or initialized, we're ready
-    if (hasCheckedStatus || isInitialized) {
-      return true;
-    }
-    
-    return false;
-  }, [hasHydrated, isInitializing, isAuthenticated, accessToken, hasCheckedStatus, isInitialized]);
+  }, [isAuthenticated, accessToken, navigate, setSession, clearSession, sessionId, startMatching, isInitializing, autoSearch]);
 
   // Debug logging
-  console.log('[VideochatPage] Render state:', {
+  logger.debug('Render state', {
     hasHydrated,
     isInitializing,
     isInitialized,
@@ -350,11 +434,11 @@ export function VideochatPage(): JSX.Element {
     );
   }
 
-  // If there's an active session, show ChatWindow
+  // If there's an active session, show ChatWindow with smooth transition
   if (sessionId && partner) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white transition-colors">
-            <ChatWindow sessionId={sessionId} partner={partner} />
+      <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white transition-colors ${isTransitioning ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}>
+        <ChatWindow sessionId={sessionId} partner={partner} />
       </div>
     );
   }
@@ -383,67 +467,117 @@ export function VideochatPage(): JSX.Element {
     );
   }
 
-  // Show searching state when no active session
-  // Use user?.name with fallback in case user is still loading
-  // Always render something - this is the final fallback
+  // Show video preview with searching overlay when no active session
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white transition-colors">
-      <div className="flex flex-col h-screen">
-        {/* Header */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex justify-between items-center transition-colors">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Chatroulette</h1>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            <span className="text-gray-700 dark:text-gray-300">Hola, {user?.name || 'Usuario'}</span>
-            {user?.role === 'ADMIN' && (
-              <Button variant="primary" size="sm" onClick={() => navigate('/admin')}>
-                Panel Admin
-              </Button>
-            )}
-            <Button variant="secondary" size="sm" onClick={logout}>
-              Cerrar Sesión
-            </Button>
-          </div>
-        </div>
-
-        {/* Searching content */}
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto p-8">
-            <div className="mb-6">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-500 mx-auto"></div>
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* Local Video - Full Screen */}
+      <div className="absolute inset-0 w-full h-full">
+        <video
+          ref={webrtcLocalVideoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover"
+        />
+        {!localStream && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+              <p className="text-white/80">Iniciando cámara...</p>
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
-              {isSearching ? 'Buscando chat...' : 'Preparando búsqueda...'}
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-8">
-              {isSearching 
-                ? 'Estamos buscando alguien con quien puedas chatear. Por favor espera...'
-                : 'Preparando la conexión...'}
-            </p>
+          </div>
+        )}
+      </div>
 
-            {(error || initializationError) && (
-              <div className="mb-6 bg-red-500/10 border border-red-500 text-red-500 p-3 rounded-lg">
-                {error || initializationError}
-              </div>
-            )}
+      {/* Searching Overlay with smooth transition */}
+      <div className={`transition-opacity duration-300 ${isSearching && !isTransitioning ? 'opacity-100' : 'opacity-0'}`}>
+        <SearchingOverlay
+          isSearching={isSearching && !isTransitioning}
+          onCancel={handleCancelSearch}
+          showCancelButton={isSearching && !isTransitioning}
+        />
+      </div>
 
-            {(error || initializationError) && (
+      {/* Minimalist Header - Top Right Corner */}
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+        {/* Auto Search Toggle */}
+        <button
+          onClick={() => setAutoSearch(!autoSearch)}
+          className="px-3 py-2 bg-black/50 hover:bg-black/70 backdrop-blur-sm border border-white/20 rounded-lg shadow-lg text-white text-sm transition-colors"
+          title={autoSearch ? 'Desactivar búsqueda automática' : 'Activar búsqueda automática'}
+        >
+          {autoSearch ? '✓ Auto' : 'Auto'}
+        </button>
+        {/* App Header - User menu */}
+        <div className="relative">
+          <AppHeader 
+            className="bg-black/50 backdrop-blur-sm border-white/20 rounded-lg shadow-lg border-0 shadow-none" 
+            showLogo={false}
+          />
+        </div>
+      </div>
+
+      {/* Video Controls - Bottom Center */}
+      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-3">
+        <Button
+          variant="secondary"
+          size="md"
+          onClick={toggleVideo}
+          className={`bg-black/50 hover:bg-black/70 text-white border-white/20 backdrop-blur-sm ${
+            !isVideoEnabled ? 'bg-red-500/50 border-red-500/50' : ''
+          }`}
+          title={isVideoEnabled ? 'Desactivar video' : 'Activar video'}
+        >
+          {isVideoEnabled ? '📹' : '📹🚫'}
+        </Button>
+        <Button
+          variant="secondary"
+          size="md"
+          onClick={toggleAudio}
+          className={`bg-black/50 hover:bg-black/70 text-white border-white/20 backdrop-blur-sm ${
+            !isAudioEnabled ? 'bg-red-500/50 border-red-500/50' : ''
+          }`}
+          title={isAudioEnabled ? 'Desactivar audio' : 'Activar audio'}
+        >
+          {isAudioEnabled ? '🎤' : '🎤🚫'}
+        </Button>
+        {!isSearching && (
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={startMatching}
+            disabled={isSearching}
+            className="bg-primary-600 hover:bg-primary-700 text-white font-bold text-lg px-6 py-3 shadow-lg transform hover:scale-105 active:scale-95 transition-transform"
+          >
+            ▶️ Conectar
+          </Button>
+        )}
+      </div>
+
+      {/* Error Message - Top Center */}
+      {(error || initializationError) && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30 max-w-md">
+          <div className="bg-red-500/90 backdrop-blur-sm border border-red-400 text-white p-4 rounded-lg shadow-xl">
+            <p className="text-center mb-3">{error || initializationError}</p>
+            <div className="flex gap-2 justify-center">
               <Button
-                variant="primary"
-                size="lg"
+                variant="secondary"
+                size="sm"
                 onClick={() => {
                   setError(null);
                   setInitializationError(null);
-                  startMatching();
+                  if (!isSearching) {
+                    startMatching();
+                  }
                 }}
-                className="w-full sm:w-auto"
+                className="bg-white/20 hover:bg-white/30 text-white"
               >
                 Intentar de nuevo
               </Button>
-            )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

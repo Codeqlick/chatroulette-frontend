@@ -2,6 +2,8 @@ import { io, Socket } from 'socket.io-client';
 import { getEnv } from '@config/env.schema';
 import { WEBSOCKET_EVENTS } from '@config/constants';
 import { useAuthStore } from '@application/stores/auth-store';
+import { isTokenExpired, isTokenExpiringSoon } from '@infrastructure/utils/jwt-utils';
+import { logger } from '@infrastructure/logging/frontend-logger';
 
 // Re-export for convenience
 export { WEBSOCKET_EVENTS };
@@ -15,10 +17,44 @@ export class WebSocketService {
   private maxReconnectAttempts = 5;
   private currentToken: string | null = null;
 
-  connect(token: string): void {
+  async connect(token: string): Promise<void> {
     // If already connected with the same token, don't reconnect
     if (this.socket?.connected && this.currentToken === token) {
       return;
+    }
+
+    // Check if token is expired or expiring soon before connecting
+    if (isTokenExpired(token)) {
+      logger.warn('Token is expired, attempting to refresh before connecting');
+      try {
+        const state = useAuthStore.getState();
+        if (state.isTokenExpiringSoon()) {
+          await state.refreshAccessToken();
+          // Get the new token after refresh
+          const newState = useAuthStore.getState();
+          token = newState.accessToken || token;
+        }
+      } catch (error) {
+        logger.error('Failed to refresh token before connecting', { error });
+        this.status = 'error';
+        this.onStatusChange?.(this.status);
+        return; // Don't attempt to connect if refresh failed
+      }
+    } else if (isTokenExpiringSoon(token, 5)) {
+      // Token is expiring soon, try to refresh proactively
+      logger.debug('Token is expiring soon, refreshing before connecting');
+      try {
+        const state = useAuthStore.getState();
+        if (state.isTokenExpiringSoon()) {
+          await state.refreshAccessToken();
+          // Get the new token after refresh
+          const newState = useAuthStore.getState();
+          token = newState.accessToken || token;
+        }
+      } catch (error) {
+        logger.error('Failed to refresh token before connecting', { error });
+        // Continue anyway, the token might still be valid
+      }
     }
 
     // Disconnect existing socket if it exists
@@ -47,12 +83,35 @@ export class WebSocketService {
       this.attemptReconnect();
     });
 
-    this.socket.on('connect_error', (error: Error) => {
+    this.socket.on('connect_error', async (error: Error) => {
       this.status = 'error';
       this.onStatusChange?.(this.status);
+      
       // Check if it's an authentication error
-      if (error.message.includes('Authentication') || error.message.includes('Invalid token')) {
-        console.warn('WebSocket authentication error, will attempt to refresh token');
+      if (error.message.includes('Authentication') || error.message.includes('Invalid token') || error.message.includes('jwt expired')) {
+        logger.warn('Authentication error detected, attempting to refresh token and reconnect');
+        
+        try {
+          const state = useAuthStore.getState();
+          // Try to refresh token
+          if (state.refreshToken) {
+            await state.refreshAccessToken();
+            // Get new token and reconnect
+            const newState = useAuthStore.getState();
+            if (newState.accessToken) {
+              // Disconnect current socket
+              if (this.socket) {
+                this.socket.disconnect();
+                this.socket = null;
+              }
+              // Reconnect with new token
+              await this.connect(newState.accessToken);
+            }
+          }
+        } catch (refreshError) {
+          logger.error('Failed to refresh token after auth error', { error: refreshError });
+          // Error is already handled in refreshAccessToken (logout, redirect)
+        }
       }
     });
   }
@@ -70,7 +129,7 @@ export class WebSocketService {
   /**
    * Update the token and reconnect if necessary
    */
-  updateToken(token: string): void {
+  async updateToken(token: string): Promise<void> {
     if (this.currentToken === token) {
       return; // Token hasn't changed
     }
@@ -85,7 +144,7 @@ export class WebSocketService {
 
     // Reconnect with new token if it was connected before
     if (wasConnected) {
-      this.connect(token);
+      await this.connect(token);
     } else {
       this.currentToken = token;
     }
@@ -161,12 +220,17 @@ export class WebSocketService {
     const token = state.accessToken;
 
     if (!token) {
-      console.warn('No access token available for WebSocket reconnection');
+      logger.warn('No access token available for reconnection');
       return;
     }
 
-    setTimeout(() => {
-      this.connect(token);
+    // Check if token needs refresh before reconnecting
+    setTimeout(async () => {
+      try {
+        await this.connect(token);
+      } catch (error) {
+        logger.error('Error during reconnection', { error });
+      }
     }, 1000 * this.reconnectAttempts);
   }
 }

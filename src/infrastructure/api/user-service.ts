@@ -3,6 +3,7 @@ import { User } from '@domain/entities/user';
 
 export interface UpdateProfileRequest {
   name?: string;
+  username?: string;
   avatar?: string | null;
   bio?: string | null;
 }
@@ -20,7 +21,7 @@ export interface UploadAvatarResponse {
 }
 
 export interface PublicUserProfile {
-  id: string;
+  username: string;
   name: string;
   avatar: string | null;
   bio: string | null;
@@ -84,13 +85,13 @@ export class UserService {
     return response.data;
   }
 
-  async getPublicProfile(userId: string): Promise<PublicUserProfile> {
-    const response = await apiClient.instance.get<PublicUserProfile>(`/users/${userId}`);
+  async getPublicProfile(username: string): Promise<PublicUserProfile> {
+    const response = await apiClient.instance.get<PublicUserProfile>(`/users/username/${username}`);
     return response.data;
   }
 
-  async getUserStats(userId: string): Promise<UserStats> {
-    const response = await apiClient.instance.get<UserStats>(`/users/${userId}/stats`);
+  async getUserStats(username: string): Promise<UserStats> {
+    const response = await apiClient.instance.get<UserStats>(`/users/username/${username}/stats`);
     return response.data;
   }
 }

@@ -1,5 +1,8 @@
 # Chatroulette Frontend
 
+[![Frontend CI](https://github.com/Codeqlick/chatroulette-frontend/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Codeqlick/chatroulette-frontend/actions/workflows/ci.yml)
+[![Frontend Deploy](https://github.com/Codeqlick/chatroulette-frontend/actions/workflows/deploy.yml/badge.svg)](https://github.com/Codeqlick/chatroulette-frontend/actions/workflows/deploy.yml)
+
 Frontend React para plataforma Chatroulette construido con TypeScript, React 18, Vite y Tailwind CSS siguiendo Clean Architecture.
 
 ## Arquitectura
@@ -141,6 +144,21 @@ Este proyecto sigue estrictamente los estándares definidos en `../Engineering-S
 - Commits pequeños con mensajes imperativos.
 - PRs obligatorias con revisión cruzada.
 - Mantener `main` protegido con CI y revisiones obligatorias.
+
+## CI/CD
+
+- **`Frontend CI`** (`.github/workflows/ci.yml`): corre en PRs y en `main/develop`. Ejecuta `npm ci`, lint, type-check, tests (Vitest) con cobertura y build de Vite.
+- **`Frontend Deploy`** (`.github/workflows/deploy.yml`): workflow manual (`workflow_dispatch`) que sincroniza el repo en la VPS y ejecuta `docker compose -f docker-compose.production.yml up -d frontend`.
+
+### Secretos requeridos
+
+| Secreto | Descripción |
+| --- | --- |
+| `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `SSH_PORT` | Acceso SSH a la VPS |
+| `DEPLOY_PATH` | Ruta donde vive el proyecto (ej. `/srv/codeqlick/chatroulette`) |
+| `COMPOSE_FILE` | (Opcional) ruta al docker-compose |
+
+Habilita branch protection en `main` y `develop` para exigir el check `Frontend CI` y revisión de PRs.
 
 ---
 

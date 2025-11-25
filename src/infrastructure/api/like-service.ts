@@ -1,7 +1,8 @@
 import { apiClient } from './api-client';
 
 export interface CreateLikeRequest {
-  likedUserId: string;
+  likedUserId?: string;
+  likedUsername?: string;
 }
 
 export interface CreateLikeResponse {
@@ -27,10 +28,18 @@ export interface SessionLikesResponse {
 }
 
 export class LikeService {
-  async likeUser(sessionId: string, likedUserId: string): Promise<CreateLikeResponse> {
+  async likeUser(sessionId: string, likedUserId?: string, likedUsername?: string): Promise<CreateLikeResponse> {
+    const body: CreateLikeRequest = {};
+    if (likedUserId) {
+      body.likedUserId = likedUserId;
+    } else if (likedUsername) {
+      body.likedUsername = likedUsername;
+    } else {
+      throw new Error('Either likedUserId or likedUsername must be provided');
+    }
     const response = await apiClient.instance.post<CreateLikeResponse>(
       `/sessions/${sessionId}/like`,
-      { likedUserId }
+      body
     );
     return response.data;
   }

@@ -6,6 +6,7 @@ import { webSocketService } from '@infrastructure/websocket/websocket-service';
 import { sessionService } from '@infrastructure/api/session-service';
 import { WEBSOCKET_EVENTS } from '@config/constants';
 import { ChatWindow } from '../components/ChatWindow';
+import { logger } from '@infrastructure/logging/frontend-logger';
 
 export function ChatPage(): JSX.Element {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -33,7 +34,7 @@ export function ChatPage(): JSX.Element {
         } catch (err) {
           // Handle 409 (SESSION_NOT_ACTIVE) as silent redirect - session already ended
           if (err instanceof AxiosError && err.response?.status === 409) {
-            console.log('Session not active, redirecting to videochat');
+            logger.debug('Session not active, redirecting to videochat', { sessionId });
             setIsLoading(false);
             clearSession();
             navigate('/videochat');
@@ -41,7 +42,7 @@ export function ChatPage(): JSX.Element {
           }
 
           // Show error for other cases
-          console.error('Error fetching session details:', err);
+          logger.error('Error fetching session details', { error: err, sessionId });
           setError('No se pudo cargar la sesión. Por favor, intenta nuevamente.');
           setIsLoading(false);
           // Redirect to videochat after a delay
@@ -58,7 +59,7 @@ export function ChatPage(): JSX.Element {
     const handleMatchFound = (...args: unknown[]): void => {
       const data = args[0] as {
         sessionId: string;
-        partner: { id: string; name: string; avatar: string | null };
+        partner: { id: string; name: string; username: string; avatar: string | null };
       };
       if (data.sessionId === sessionId) {
         setSession(data.sessionId, data.partner);

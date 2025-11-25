@@ -24,12 +24,17 @@ COPY . .
 # Build de producción
 # Las variables de entorno deben pasarse como ARG durante el build
 # IMPORTANTE: Estas variables se inyectan en tiempo de BUILD, no en tiempo de ejecución
-ARG VITE_API_URL=https://api.codeqlick.com/api/v1
-ARG VITE_WS_URL=wss://api.codeqlick.com
+# Defaults para desarrollo local - se pueden sobrescribir con --build-arg
+ARG VITE_API_URL=http://localhost:3000/api/v1
+ARG VITE_WS_URL=ws://localhost:3000
+
+# Stripe publishable key (inyectada en tiempo de build)
+ARG VITE_STRIPE_PUBLISHABLE_KEY=""
 
 # Vite requiere que las variables estén como ENV durante el build
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_WS_URL=$VITE_WS_URL
+ENV VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY
 
 # Build con salida reducida (las variables NPM_CONFIG_* ya están configuradas)
 RUN npm run build

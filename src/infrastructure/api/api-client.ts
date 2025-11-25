@@ -1,8 +1,8 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getEnv } from '@config/env.schema';
-import { authService } from './auth-service';
-import { webSocketService } from '../websocket/websocket-service';
 import { useAuthStore } from '@application/stores/auth-store';
+import { useBanStore } from '@application/stores/ban-store';
+import { isTokenExpiringSoon } from '@infrastructure/utils/jwt-utils';
 
 export class ApiClient {
   private client: AxiosInstance;
@@ -21,14 +21,47 @@ export class ApiClient {
       },
     });
 
-    // Add auth token to requests
-    this.client.interceptors.request.use((config) => {
-      const token = localStorage.getItem('accessToken');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+    // Add auth token to requests and refresh proactively if needed
+    this.client.interceptors.request.use(
+      async (config) => {
+        // Skip token check for auth endpoints
+        if (config.url?.includes('/auth/')) {
+          return config;
+        }
+
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+          return config;
+        }
+
+        // Check if token is expiring soon and refresh proactively
+        if (isTokenExpiringSoon(token, 5)) {
+          const state = useAuthStore.getState();
+          if (state.isTokenExpiringSoon()) {
+            try {
+              // Try to refresh - if another refresh is in progress, this will wait or fail gracefully
+              await state.refreshAccessToken();
+              // Get the new token after refresh
+              const newToken = useAuthStore.getState().accessToken || token;
+              config.headers.Authorization = `Bearer ${newToken}`;
+            } catch (error) {
+              // Refresh failed or is in progress, use current token
+              // If token is actually expired, the request will fail and trigger reactive refresh
+              config.headers.Authorization = `Bearer ${token}`;
+            }
+          } else {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
+        } else {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
       }
-      return config;
-    });
+    );
 
     // Handle errors and refresh tokens
     this.client.interceptors.response.use(
@@ -37,12 +70,8 @@ export class ApiClient {
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
         // Skip refresh for auth endpoints to avoid infinite loops
+        // Don't redirect on auth endpoint errors - let components handle them
         if (originalRequest?.url?.includes('/auth/')) {
-        if (error.response?.status === 401) {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          window.location.href = '/login';
-        }
           return Promise.reject(error);
         }
 
@@ -77,19 +106,16 @@ export class ApiClient {
           }
 
           try {
-            const response = await authService.refreshToken(refreshToken);
-            const newAccessToken = response.accessToken;
+            // Use the refresh method from auth store which handles all updates
+            await useAuthStore.getState().refreshAccessToken();
+            
+            // Get the new token after refresh
+            const newState = useAuthStore.getState();
+            const newAccessToken = newState.accessToken;
 
-            // Update tokens in localStorage and store
-            localStorage.setItem('accessToken', newAccessToken);
-            const state = useAuthStore.getState();
-            useAuthStore.setState({
-              ...state,
-              accessToken: newAccessToken,
-            });
-
-            // Update WebSocket token
-            webSocketService.updateToken(newAccessToken);
+            if (!newAccessToken) {
+              throw new Error('Failed to get new access token after refresh');
+            }
 
             // Retry queued requests
             this.failedQueue.forEach(({ resolve }) => {
@@ -104,17 +130,35 @@ export class ApiClient {
               return this.client(originalRequest);
             }
           } catch (refreshError) {
-            // Refresh failed, clear tokens and redirect to login
+            // Refresh failed - error is already handled in refreshAccessToken (logout, redirect)
             this.failedQueue.forEach(({ reject }) => {
               reject(refreshError);
             });
             this.failedQueue = [];
             this.isRefreshing = false;
-
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
-            window.location.href = '/login';
+            
             return Promise.reject(refreshError);
+          }
+        }
+
+        if (error.response?.status === 403) {
+          const errorPayload = (error.response.data as { error?: { message?: string; details?: Record<string, string> } })?.error;
+          const message = errorPayload?.message ?? '';
+          if (message.toLowerCase().includes('banned')) {
+            const details = errorPayload?.details;
+            useBanStore
+              .getState()
+              .setBanInfo({
+                details: {
+                  reason: details?.reason,
+                  bannedAt: details?.bannedAt,
+                  bannedUntil: details?.bannedUntil,
+                },
+              });
+
+            if (typeof window !== 'undefined' && window.location.pathname !== '/banned') {
+              window.location.href = '/banned';
+            }
           }
         }
 

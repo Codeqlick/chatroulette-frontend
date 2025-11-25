@@ -3,6 +3,16 @@ import { z } from 'zod';
 // Detectar si estamos en producción (modo build de producción)
 const isProduction = import.meta.env.PROD || import.meta.env.MODE === 'production';
 
+// Función helper para detectar si una URL es de desarrollo (localhost)
+const isDevelopmentUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
+};
+
 // Schema base con validación según el entorno
 const envSchema = z.object({
   VITE_API_URL: z
@@ -10,17 +20,23 @@ const envSchema = z.object({
     .url()
     .refine(
       (url) => {
-        // En producción, debe ser HTTPS
+        // Si es URL de desarrollo, siempre permitir HTTP
+        if (isDevelopmentUrl(url)) {
+          return true;
+        }
+        // En producción con URLs no-localhost, debe ser HTTPS
         if (isProduction) {
           return url.startsWith('https://');
         }
         return true; // En desarrollo, permite HTTP
       },
-      {
-        message: isProduction
+      (url) => ({
+        message: isDevelopmentUrl(url)
+          ? 'VITE_API_URL debe ser una URL válida'
+          : isProduction
           ? 'VITE_API_URL debe ser HTTPS en producción (ej: https://api.codeqlick.com/api/v1)'
           : 'VITE_API_URL debe ser una URL válida',
-      }
+      })
     )
     .default('http://localhost:3000/api/v1'),
   VITE_WS_URL: z
@@ -28,19 +44,26 @@ const envSchema = z.object({
     .url()
     .refine(
       (url) => {
-        // En producción, debe ser WSS (WebSocket Secure)
+        // Si es URL de desarrollo, siempre permitir WS
+        if (isDevelopmentUrl(url)) {
+          return true;
+        }
+        // En producción con URLs no-localhost, debe ser WSS
         if (isProduction) {
           return url.startsWith('wss://');
         }
         return true; // En desarrollo, permite WS
       },
-      {
-        message: isProduction
+      (url) => ({
+        message: isDevelopmentUrl(url)
+          ? 'VITE_WS_URL debe ser una URL válida'
+          : isProduction
           ? 'VITE_WS_URL debe ser WSS en producción (ej: wss://api.codeqlick.com)'
           : 'VITE_WS_URL debe ser una URL válida',
-      }
+      })
     )
-    .default('http://localhost:3000'),
+    .default('ws://localhost:3000'),
+  VITE_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

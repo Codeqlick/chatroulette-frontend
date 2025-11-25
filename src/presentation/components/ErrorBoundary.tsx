@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from './Button';
+import { logger } from '@infrastructure/logging/frontend-logger';
 
 interface Props {
   children: ReactNode;
@@ -22,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('[ErrorBoundary] Error caught:', error, errorInfo);
+    logger.error('Error caught', { error, errorInfo });
   }
 
   render(): ReactNode {

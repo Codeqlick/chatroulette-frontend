@@ -1,0 +1,85 @@
+name: Frontend Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Destino del despliegue"
+        type: choice
+        options:
+          - staging
+          - production
+        default: production
+
+permissions:
+  contents: read
+
+env:
+  DEPLOY_PATH: ""
+  COMPOSE_FILE: ""
+  DEFAULT_COMPOSE_FILE: docker-compose.production.yml
+  SSH_HOST: ""
+  SSH_USER: ""
+  SSH_KEY: ""
+  SSH_PORT: ""
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Prepare deployment env
+        shell: bash
+        run: |
+          {
+            echo "DEPLOY_PATH=${{ secrets.DEPLOY_PATH }}";
+            echo "COMPOSE_FILE=${{ secrets.COMPOSE_FILE }}";
+            echo "DEFAULT_COMPOSE_FILE=docker-compose.production.yml";
+            echo "SSH_HOST=${{ secrets.SSH_HOST }}";
+            echo "SSH_USER=${{ secrets.SSH_USER }}";
+            echo "SSH_PORT=${{ secrets.SSH_PORT }}";
+            echo "SSH_KEY<<'EOF'";
+            echo "${{ secrets.SSH_KEY }}";
+            echo "EOF";
+          } >> "$GITHUB_ENV"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+          if-no-files-found: error
+
+      - name: Deploy to OVH via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_KEY }}
+          port: ${{ env.SSH_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            cd "$DEPLOY_PATH"
+            COMPOSE_PATH="${COMPOSE_FILE:-$DEFAULT_COMPOSE_FILE}"
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose -f "$COMPOSE_PATH" pull frontend || true
+            docker compose -f "$COMPOSE_PATH" build frontend
+            docker compose -f "$COMPOSE_PATH" up -d frontend
+            docker compose -f "$COMPOSE_PATH" ps
+

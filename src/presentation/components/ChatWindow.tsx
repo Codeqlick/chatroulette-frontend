@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '@application/stores/chat-store';
 import { useAuthStore } from '@application/stores/auth-store';
@@ -10,19 +10,22 @@ import { useToast } from '../hooks/useToast';
 import { Button } from './Button';
 import { ReportModal } from './ReportModal';
 import { UserProfileModal } from './UserProfileModal';
-import { ConnectionStatus } from './ConnectionStatus';
+import { AppHeader } from './AppHeader';
 import { ThemeToggle } from './ThemeToggle';
 import { ToastContainer } from './Toast';
+import { UserProfileCard } from './UserProfileCard';
 import { blockService } from '@infrastructure/api/block-service';
 import { likeService } from '@infrastructure/api/like-service';
+import { logger } from '@infrastructure/logging/frontend-logger';
 
 interface ChatWindowProps {
   sessionId: string;
-  partner: { id: string; name: string; avatar: string | null };
+  partner: { username: string; name: string; avatar: string | null };
 }
 
 export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const { toasts, showError, showWarning, removeToast } = useToast();
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -45,7 +48,6 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
   
   // Initialize messagesRef after messages is available, and keep it updated
   const messagesRef = useRef(messages);
-  const { user, logout } = useAuthStore();
   const {
     localStream,
     remoteStream,
@@ -66,6 +68,40 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
     changeAudioDevice,
     error: webRTCError,
   } = useWebRTC(sessionId);
+
+  // Cleanup function to stop all WebRTC connections and media
+  const cleanupWebRTC = useCallback((): void => {
+    // Stop local stream tracks
+    if (localStream) {
+      localStream.getTracks().forEach((track) => {
+        track.stop();
+      });
+    }
+
+    // Stop remote stream tracks
+    if (remoteStream) {
+      remoteStream.getTracks().forEach((track) => {
+        track.stop();
+      });
+    }
+
+    // Clear video elements
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+
+    // Emit disconnect event via WebSocket
+    if (sessionId) {
+      try {
+        webSocketService.emit(WEBSOCKET_EVENTS.VIDEO_END, { sessionId });
+      } catch (error) {
+        logger.warn('Error emitting video end event', { error, sessionId });
+      }
+    }
+  }, [localStream, remoteStream, localVideoRef, remoteVideoRef, sessionId]);
 
   // Store stopVideo in ref to avoid dependency issues
   useEffect(() => {
@@ -88,6 +124,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           id: msg.id,
           sessionId: msg.sessionId,
           senderId: msg.senderId,
+          senderUsername: msg.senderUsername,
           content: msg.content,
           timestamp: new Date(msg.timestamp),
           delivered: msg.delivered,
@@ -101,7 +138,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
       } catch (error) {
-        console.error('Error loading message history:', error);
+        logger.error('Error loading message history', { error, sessionId });
         // Don't show error to user, just continue without history
       } finally {
         setLoadingMessages(false);
@@ -112,8 +149,28 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
   }, [sessionId, loadMessages, setLoadingMessages]);
 
   useEffect(() => {
-    // Join session room
+    // Join session room - ensure WebSocket is connected first
+    if (webSocketService.isConnected()) {
     webSocketService.joinRoom(sessionId);
+      logger.debug('Joined session room', { sessionId });
+    } else {
+      logger.warn('WebSocket not connected, waiting to join room', { sessionId });
+      // Wait for WebSocket to connect, then join room
+      const checkConnection = setInterval(() => {
+        if (webSocketService.isConnected()) {
+          webSocketService.joinRoom(sessionId);
+          logger.debug('Joined session room after connection', { sessionId });
+          clearInterval(checkConnection);
+        }
+      }, 500);
+      
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        clearInterval(checkConnection);
+      }, 10000);
+      
+      return () => clearInterval(checkConnection);
+    }
 
     // Listen for messages
     const handleMessage = (...args: unknown[]): void => {
@@ -121,6 +178,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         sessionId: string;
         messageId: string;
         senderId: string;
+        senderUsername: string;
         message: string;
         timestamp: number;
       };
@@ -142,6 +200,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           id: data.messageId,
           sessionId: data.sessionId,
           senderId: data.senderId,
+          senderUsername: data.senderUsername,
           content: data.message,
           timestamp: new Date(data.timestamp),
           delivered: true,
@@ -166,7 +225,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         sessionId: string;
       };
       if (data.sessionId === sessionId) {
-        console.log('[ChatWindow] Room ready, both users in room');
+        logger.debug('Room ready, both users in room', { sessionId });
         setRoomReady(true);
       }
     };
@@ -180,7 +239,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
       updateMessage(data.messageId, {
         delivered: true,
       });
-      console.log('[ChatWindow] Message delivered:', data.messageId);
+      logger.debug('Message delivered', { messageId: data.messageId, sessionId });
     };
 
     const handlePartnerDisconnected = (...args: unknown[]): void => {
@@ -189,7 +248,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         reason: string;
       };
       if (data.sessionId === sessionId) {
-        console.warn('[ChatWindow] Partner disconnected:', data.reason);
+        logger.warn('Partner disconnected', { reason: data.reason, sessionId });
         const reasonMessages: Record<string, string> = {
           connection_lost: 'El compañero perdió la conexión',
           user_left: 'El compañero abandonó la sesión',
@@ -206,8 +265,18 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         message: string;
         eventId?: string;
       };
-      console.error('[ChatWindow] WebSocket error:', error);
+      logger.error('WebSocket error', { error, sessionId });
+      
+      // Handle rate limit errors with a more user-friendly message
+      if (error.code === 'RATE_LIMIT_EXCEEDED' || error.message.toLowerCase().includes('rate limit')) {
+        if (error.message.toLowerCase().includes('video offers')) {
+          showWarning('Has enviado demasiadas solicitudes de video. Por favor, espera un momento antes de intentar nuevamente.');
+        } else {
+          showWarning('Demasiadas solicitudes. Por favor, espera un momento.');
+        }
+      } else {
       showError(`Error de conexión: ${error.message}`);
+      }
     };
 
     webSocketService.on(WEBSOCKET_EVENTS.CHAT_MESSAGE_RECEIVED, handleMessage);
@@ -251,21 +320,26 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
   }, [messages]);
 
   // Auto-start video when room is ready and both users are in room
+  // Use a random delay to prevent both users from starting at the same time
   useEffect(() => {
     if (sessionId && !localStream && roomReady) {
-      // Small delay to ensure everything is synchronized
+      // Random delay between 500ms and 2000ms to prevent race condition
+      // The user with shorter delay will start the offer, the other will wait for it
+      const randomDelay = 500 + Math.random() * 1500;
+      logger.debug(`Room ready, starting video in ${Math.round(randomDelay)}ms`, { sessionId, delay: Math.round(randomDelay) });
+      
       const timer = setTimeout(() => {
-        console.log('[ChatWindow] Starting video after room ready');
+        logger.debug('Starting video after room ready', { sessionId });
         startVideo().catch((err) => {
-          console.error('Error auto-starting video:', err);
+          logger.error('Error auto-starting video', { error: err, sessionId });
         });
-      }, 500);
+      }, randomDelay);
 
       return () => clearTimeout(timer);
     }
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, roomReady]);
+  }, [sessionId, roomReady, localStream]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -281,7 +355,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
       const isClickInsideDesktop = menuContainerDesktopRef.current?.contains(target);
       
       if (!isClickInsideMobile && !isClickInsideDesktop) {
-        console.log('[ChatWindow] Click outside menu, closing menu');
+        logger.debug('Click outside menu, closing menu');
         setIsMenuOpen(false);
       }
     };
@@ -344,10 +418,10 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
   const handleMenuToggle = (e: React.MouseEvent<HTMLButtonElement>): void => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('[ChatWindow] Menu toggle clicked, current state:', isMenuOpen);
+    logger.debug('Menu toggle clicked', { currentState: isMenuOpen });
     // Use a direct state update without setTimeout
     const newState = !isMenuOpen;
-    console.log('[ChatWindow] Setting menu state to:', newState);
+    logger.debug('Setting menu state', { newState });
     setIsMenuOpen(newState);
   };
 
@@ -360,8 +434,22 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
     isEndingRef.current = true;
     setIsEnding(true);
     try {
-      // Stop video before ending session
+      // Cleanup WebRTC: stop all video/audio tracks, close connections
+      cleanupWebRTC();
+      
+      // Also call stopVideo for additional cleanup
       stopVideo();
+      
+      // Stop any active matching before ending session
+      try {
+        const { matchingService } = await import('@infrastructure/api/matching-service');
+        await matchingService.stop().catch((err) => {
+          logger.warn('Error stopping matching', { error: err });
+          // Continue even if stopping matching fails
+        });
+      } catch (err) {
+        logger.warn('Error importing matching service', { error: err });
+      }
       
       // Add timeout for session ending request
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -373,10 +461,13 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         timeoutPromise,
       ]);
 
+      // Clear session state
       clearSession();
+      
+      // Navigate back to videochat page - this will trigger reconnection logic
       navigate('/videochat');
     } catch (error) {
-      console.error('Error ending session:', error);
+      logger.error('Error ending session', { error, sessionId });
       isEndingRef.current = false;
       setIsEnding(false);
       // Show error message to user
@@ -389,7 +480,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
   };
 
   const handleLike = async (): Promise<void> => {
-    if (isLiking || !sessionId || !partner.id) {
+    if (isLiking || !sessionId || !partner.username) {
       return;
     }
 
@@ -404,10 +495,10 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         setHasLiked(false);
         await likeService.unlikeUser(sessionId);
       } else {
-        // Dar like
+        // Dar like usando username del partner
         setPartnerLikes(previousLikes + 1);
         setHasLiked(true);
-        await likeService.likeUser(sessionId, partner.id);
+        await likeService.likeUser(sessionId, undefined, partner.username);
       }
 
       // Recargar contador real y estado del like desde el servidor para mantener sincronización
@@ -417,13 +508,11 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           likeService.getSessionLikes(sessionId).catch(() => ({ likes: [] })),
         ]);
         
-        // Count only likes received by the partner in this session
-        const sessionLikesCount = sessionLikes.likes.filter(
-          (like: { likedUserId: string }) => like.likedUserId === partner.id
-        ).length;
+        // Count likes in this session (will need backend update to filter by username)
+        const sessionLikesCount = sessionLikes.likes.length;
         
-        console.log('[ChatWindow] Reloaded after like toggle:', {
-          partnerId: partner.id,
+        logger.debug('Reloaded after like toggle', {
+          partnerUsername: partner.username,
           sessionId: sessionId,
           sessionLikesCount: sessionLikesCount,
           hasLiked: likeStatus.hasLiked,
@@ -434,7 +523,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         setPartnerLikes(sessionLikesCount);
         setHasLiked(likeStatus.hasLiked || false);
       } catch (statsError) {
-        console.error('Error reloading likes count and status:', statsError);
+        logger.error('Error reloading likes count and status', { error: statsError, sessionId });
         // Si falla, mantener el valor optimista
       }
     } catch (error) {
@@ -442,7 +531,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
       setPartnerLikes(previousLikes);
       setHasLiked(previousHasLiked);
       
-      console.error('Error toggling like:', error);
+      logger.error('Error toggling like', { error, sessionId });
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -458,7 +547,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
   // Load initial likes count and like status when component mounts or partner/session changes
   useEffect(() => {
     const loadInitialData = async (): Promise<void> => {
-      if (!partner.id || !sessionId) {
+      if (!partner.username || !sessionId) {
         return;
       }
 
@@ -469,13 +558,11 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           likeService.getSessionLikes(sessionId).catch(() => ({ likes: [] })),
         ]);
         
-        // Count only likes received by the partner in this session
-        const sessionLikesCount = sessionLikes.likes.filter(
-          (like: { likedUserId: string }) => like.likedUserId === partner.id
-        ).length;
+        // Count likes in this session (will need backend update to filter by username)
+        const sessionLikesCount = sessionLikes.likes.length;
         
-        console.log('[ChatWindow] Loaded initial data:', {
-          partnerId: partner.id,
+        logger.debug('Loaded initial data', {
+          partnerUsername: partner.username,
           sessionId: sessionId,
           sessionLikesCount: sessionLikesCount,
           hasLiked: likeStatus.hasLiked,
@@ -485,13 +572,13 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         setPartnerLikes(sessionLikesCount);
         setHasLiked(likeStatus.hasLiked || false);
       } catch (error) {
-        console.error('Error loading initial data:', error);
+        logger.error('Error loading initial data', { error, sessionId });
         // Don't show error to user, just continue with defaults
       }
     };
 
     loadInitialData();
-  }, [partner.id, sessionId]);
+  }, [partner.username, sessionId]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white transition-colors w-full overflow-hidden">
@@ -502,41 +589,17 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <h1 className="text-lg font-bold text-gray-900 dark:text-white mr-2 flex-shrink-0">Chatroulette</h1>
             {/* Partner Profile Card */}
-            <div 
+            <UserProfileCard
+              name={partner.name}
+              username={partner.username}
+              avatar={partner.avatar}
+              connectionState={connectionState}
+              connectionQuality={connectionQuality || undefined}
+              size="sm"
+              showUsername={true}
+              showConnectionStatus={true}
               onClick={() => setIsProfileModalOpen(true)}
-              className="flex items-center gap-2.5 px-2.5 py-1.5 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
-            >
-          {partner.avatar ? (
-            <img
-              src={partner.avatar}
-              alt={partner.name}
-                  className={`w-10 h-10 rounded-full flex-shrink-0 ${
-                    connectionState === 'connected'
-                      ? 'ring-2 ring-green-500'
-                      : connectionState === 'connecting'
-                        ? 'ring-2 ring-yellow-500 animate-pulse'
-                        : 'ring-2 ring-gray-400'
-                  }`}
             />
-          ) : (
-                <div className={`w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center flex-shrink-0 text-sm font-semibold ${
-                  connectionState === 'connected'
-                    ? 'ring-2 ring-green-500'
-                    : connectionState === 'connecting'
-                      ? 'ring-2 ring-yellow-500 animate-pulse'
-                      : 'ring-2 ring-gray-400'
-                }`}>
-              {partner.name[0]?.toUpperCase()}
-            </div>
-          )}
-            <div className="min-w-0 flex-1">
-                <h2 className="font-bold text-sm truncate text-gray-900 dark:text-white">{partner.name}</h2>
-            <ConnectionStatus
-              state={connectionState}
-              quality={connectionQuality || undefined}
-            />
-          </div>
-        </div>
           </div>
           <div className="flex gap-2 items-center flex-shrink-0">
             {/* Media Controls Group */}
@@ -722,10 +785,10 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
                         size="sm"
                         onClick={async () => {
                           try {
-                            await blockService.blockUser(partner.id);
+                            await blockService.blockUser(partner.username);
                             await handleEndSession();
                           } catch (error) {
-                            console.error('Error blocking user:', error);
+                            logger.error('Error blocking user', { error, username: partner.username });
                             showError('Error al bloquear usuario. Intenta nuevamente.');
                           }
                           setIsMenuOpen(false);
@@ -773,56 +836,20 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex-shrink-0">Chatroulette</h1>
             <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 flex-shrink-0"></div>
             {/* Partner Profile Card */}
-            <div 
+            <UserProfileCard
+              name={partner.name}
+              username={partner.username}
+              avatar={partner.avatar}
+              connectionState={connectionState}
+              connectionQuality={connectionQuality || undefined}
+              size="md"
+              showUsername={true}
+              showConnectionStatus={true}
               onClick={() => setIsProfileModalOpen(true)}
-              className="flex items-center gap-3 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
-            >
-            {partner.avatar ? (
-              <img
-                src={partner.avatar}
-                alt={partner.name}
-                  className={`w-12 h-12 rounded-full flex-shrink-0 ${
-                    connectionState === 'connected'
-                      ? 'ring-3 ring-green-500'
-                      : connectionState === 'connecting'
-                        ? 'ring-3 ring-yellow-500 animate-pulse'
-                        : 'ring-3 ring-gray-400'
-                  }`}
-              />
-            ) : (
-                <div className={`w-12 h-12 rounded-full bg-primary-600 flex items-center justify-center flex-shrink-0 text-base font-semibold ${
-                  connectionState === 'connected'
-                    ? 'ring-3 ring-green-500'
-                    : connectionState === 'connecting'
-                      ? 'ring-3 ring-yellow-500 animate-pulse'
-                      : 'ring-3 ring-gray-400'
-                }`}>
-                {partner.name[0]?.toUpperCase()}
-              </div>
-            )}
-            <div className="min-w-0">
-                <h2 className="font-bold text-base truncate text-gray-900 dark:text-white">{partner.name}</h2>
-              <ConnectionStatus
-                state={connectionState}
-                quality={connectionQuality || undefined}
-              />
-            </div>
+            />
           </div>
-          </div>
-          <div className="flex items-center gap-2 xl:gap-3 flex-shrink-0">
-            <div className="hidden xl:flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <span>Hola, {user?.name || 'Usuario'}</span>
-            </div>
-            <ThemeToggle />
-            {user?.role === 'ADMIN' && (
-              <Button variant="primary" size="sm" onClick={() => navigate('/admin')} className="text-xs whitespace-nowrap">
-                Panel Admin
-              </Button>
-            )}
-            <Button variant="secondary" size="sm" onClick={logout} className="text-xs whitespace-nowrap">
-              Cerrar Sesión
-            </Button>
-          </div>
+          {/* App Header - User menu */}
+          <AppHeader className="flex-shrink-0 border-0 shadow-none bg-transparent" showLogo={false} />
           <div className="flex gap-2 xl:gap-3 items-center flex-shrink-0 ml-2 xl:ml-4">
             {/* Media Controls Group */}
             <div className="flex gap-2 items-center bg-gray-100 dark:bg-gray-700/50 px-2 py-1.5 rounded-lg shadow-sm">
@@ -1007,13 +1034,19 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
             size="sm"
             onClick={async () => {
               try {
-                await blockService.blockUser(partner.id);
+                if (!partner.username) {
+                  showError('No se puede bloquear: el nombre de usuario no está disponible');
+                  setIsMenuOpen(false);
+                  return;
+                }
+                await blockService.blockUser(partner.username);
                 await handleEndSession();
+                setIsMenuOpen(false);
               } catch (error) {
-                console.error('Error blocking user:', error);
-                alert('Error al bloquear usuario. Intenta nuevamente.');
+                logger.error('Error blocking user', { error, username: partner.username });
+                showError('Error al bloquear usuario. Intenta nuevamente.');
+                setIsMenuOpen(false);
               }
-                          setIsMenuOpen(false);
             }}
                         className="w-full bg-orange-600 hover:bg-orange-700 text-xs"
           >
@@ -1048,11 +1081,11 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
       )}
 
       {/* Main Content Area - Mobile First */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-6 p-3 sm:p-4 lg:p-6 bg-gray-100 dark:bg-gray-800 transition-colors overflow-hidden min-h-0 justify-center items-stretch lg:items-center">
-        {/* Videos Section - Apiladas verticalmente y centradas */}
-        <div className="flex flex-col gap-4 w-full lg:w-[500px] lg:max-w-lg">
+      <div className="flex-1 flex flex-col lg:flex-row gap-0 lg:gap-0 p-0 lg:p-0 bg-gray-100 dark:bg-gray-800 transition-colors overflow-hidden min-h-0">
+        {/* Videos Section - Sección izquierda más grande (estilo Flingster) */}
+        <div className="flex flex-col gap-4 w-full lg:flex-[2] lg:h-full p-3 sm:p-4 lg:p-6 items-center justify-center">
           {/* Local Video */}
-          <div className="relative bg-black rounded-lg overflow-hidden aspect-video shadow-lg w-full">
+          <div className="relative bg-black rounded-lg overflow-hidden aspect-[4/3] shadow-lg w-full max-w-md lg:max-w-lg">
           {localStream ? (
             <video
               ref={localVideoRef}
@@ -1073,7 +1106,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           </div>
         </div>
           {/* Remote Video */}
-          <div className="relative bg-black rounded-lg overflow-hidden aspect-video shadow-lg w-full">
+          <div className="relative bg-black rounded-lg overflow-hidden aspect-[4/3] shadow-lg w-full max-w-md lg:max-w-lg">
           {remoteStream ? (
             <video
               ref={remoteVideoRef}
@@ -1090,8 +1123,8 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
             {partner.name}
           </div>
         </div>
-          {/* Like Button */}
-          <div className="flex justify-center items-center">
+          {/* Like Button and Stop Button - Solo en móvil, en desktop están en el header */}
+          <div className="flex flex-col gap-3 justify-center items-center lg:hidden">
             <button
               onClick={handleLike}
               disabled={isLiking}
@@ -1126,13 +1159,24 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
                 {partnerLikes}
               </span>
             </button>
+            <Button
+              variant="danger"
+              size="lg"
+              onClick={handleEndSession}
+              isLoading={isEnding}
+              disabled={isEnding}
+              className="w-full max-w-xs font-bold text-base lg:text-lg px-6 py-3 shadow-lg transform hover:scale-105 active:scale-95 transition-transform"
+              title="Terminar videochat, cerrar conexión WebRTC y buscar nuevo usuario"
+            >
+              {isEnding ? 'Terminando...' : '⏹️ Detener Videochat'}
+            </Button>
           </div>
       </div>
 
-        {/* Chat Section - Al lado derecho de las webcams, misma altura */}
-        <div className="flex flex-col w-full lg:w-[400px] lg:max-w-md h-full lg:h-full bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-lg border border-gray-200 dark:border-gray-700">
+        {/* Chat Section - Sección derecha más estrecha (estilo Flingster) */}
+        <div className="flex flex-col w-full lg:flex-[1] lg:max-w-md lg:h-full bg-white dark:bg-gray-900 lg:border-l border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 transition-colors min-h-0 relative">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-4 transition-colors min-h-0 relative">
         {isLoadingMessages ? (
           <div className="text-center text-gray-600 dark:text-gray-400 py-8">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500 mx-auto mb-2"></div>
@@ -1145,7 +1189,8 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         ) : (
           <div className="space-y-3 lg:space-y-4">
             {messages.map((msg) => {
-            const isCurrentUser = msg.senderId === user?.id;
+            // Use senderUsername to determine if message is from current user
+            const isCurrentUser = user?.username ? msg.senderUsername === user.username : false;
             return (
               <div
                 key={msg.id}
@@ -1187,7 +1232,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
       </div>
 
       {/* Input Area */}
-          <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-5 border-t border-gray-200 dark:border-gray-700 transition-colors flex-shrink-0">
+          <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-4 border-t border-gray-200 dark:border-gray-700 transition-colors flex-shrink-0">
         <div className="flex gap-2">
           <input
             type="text"
@@ -1232,7 +1277,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           try {
             await handleEndSession();
           } catch (error) {
-            console.error('Error ending session after report:', error);
+            logger.error('Error ending session after report', { error, sessionId });
             // Still redirect even if ending session fails
             clearSession();
             navigate('/videochat');
@@ -1251,10 +1296,14 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         onReport={() => setIsReportModalOpen(true)}
         onBlock={async () => {
           try {
-            await blockService.blockUser(partner.id);
+            if (!partner.username) {
+              showError('No se puede bloquear: el nombre de usuario no está disponible');
+              return;
+            }
+            await blockService.blockUser(partner.username);
             await handleEndSession();
           } catch (error) {
-            console.error('Error blocking user:', error);
+            logger.error('Error blocking user', { error, username: partner.username });
             showError('Error al bloquear usuario. Intenta nuevamente.');
           }
         }}

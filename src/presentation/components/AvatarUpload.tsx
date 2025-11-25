@@ -66,7 +66,7 @@ export function AvatarUpload({
           accessToken: useAuthStore.getState().accessToken || '',
           refreshToken: useAuthStore.getState().refreshToken || '',
           user: {
-            id: user.id,
+            username: user.username,
             email: user.email,
             name: user.name,
             avatar: result.avatarUrl,

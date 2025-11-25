@@ -12,6 +12,7 @@ export interface ChatMessage {
   id: string;
   sessionId: string;
   senderId: string;
+  senderUsername: string;
   content: string;
   timestamp: Date;
   delivered: boolean;

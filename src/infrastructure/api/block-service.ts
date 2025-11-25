@@ -21,15 +21,15 @@ export interface GetBlockedUsersResponse {
 }
 
 export class BlockService {
-  async blockUser(userId: string): Promise<BlockUserResponse> {
+  async blockUser(username: string): Promise<BlockUserResponse> {
     const response = await apiClient.instance.post<BlockUserResponse>(
-      `/users/${userId}/block`
+      `/users/username/${username}/block`
     );
     return response.data;
   }
 
-  async unblockUser(userId: string): Promise<void> {
-    await apiClient.instance.delete(`/users/${userId}/block`);
+  async unblockUser(username: string): Promise<void> {
+    await apiClient.instance.delete(`/users/username/${username}/block`);
   }
 
   async getBlockedUsers(): Promise<GetBlockedUsersResponse> {

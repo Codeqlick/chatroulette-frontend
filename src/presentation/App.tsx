@@ -1,8 +1,11 @@
 import { Routes, Route } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useTheme } from './hooks/useTheme';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { useAuthStore, useAuthHydrated } from '@application/stores/auth-store';
+import { tokenRefreshService } from '@infrastructure/auth/token-refresh-service';
+import { logger } from '@infrastructure/logging/frontend-logger';
 
 // Lazy load pages for code splitting
 const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
@@ -11,7 +14,9 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage').then(module => ({
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage').then(module => ({ default: module.VerifyEmailPage })));
 const VideochatPage = lazy(() => import('./pages/VideochatPage').then(module => ({ default: module.VideochatPage })));
 const ChatPage = lazy(() => import('./pages/ChatPage').then(module => ({ default: module.ChatPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(module => ({ default: module.ProfilePage })));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then(module => ({ default: module.AdminDashboardPage })));
+const BannedPage = lazy(() => import('./pages/BannedPage').then(module => ({ default: module.BannedPage })));
 
 // Loading component
 function LoadingSpinner(): JSX.Element {
@@ -25,6 +30,33 @@ function LoadingSpinner(): JSX.Element {
 function App(): JSX.Element {
   // Initialize theme hook to ensure theme is applied
   useTheme();
+
+  // Initialize token refresh service
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const hasHydrated = useAuthHydrated();
+
+  useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
+    if (isAuthenticated) {
+      // Start token refresh service when user is authenticated
+      tokenRefreshService.start();
+      logger.debug('Token refresh service started');
+    } else {
+      // Stop token refresh service when user is not authenticated
+      tokenRefreshService.stop();
+      logger.debug('Token refresh service stopped');
+    }
+
+    // Cleanup on unmount or when authentication changes
+    return () => {
+      if (!isAuthenticated) {
+        tokenRefreshService.stop();
+      }
+    };
+  }, [isAuthenticated, hasHydrated]);
 
   return (
     <ErrorBoundary>
@@ -53,6 +85,14 @@ function App(): JSX.Element {
             }
           />
           <Route
+            path="/profile/:username"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin"
             element={
               <ProtectedRoute>
@@ -60,6 +100,7 @@ function App(): JSX.Element {
               </ProtectedRoute>
             }
           />
+          <Route path="/banned" element={<BannedPage />} />
         </Routes>
       </Suspense>
     </ErrorBoundary>

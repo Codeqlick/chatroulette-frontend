@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📄 Estándares de UI/Frontend
+    url: https://github.com/Codeqlick/chatroulette-frontend/blob/main/engineering-standards.md
+    about: Revisa los lineamientos antes de abrir un issue.
+
