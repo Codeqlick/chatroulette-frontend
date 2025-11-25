@@ -35,7 +35,7 @@ export function ProfilePage(): JSX.Element {
       try {
         setLoading(true);
         setError(null);
-        
+
         const [profileData, statsData] = await Promise.all([
           userService.getPublicProfile(username).catch((err: AxiosError) => {
             logger.error('Error loading profile', { error: err, username });
@@ -46,7 +46,9 @@ export function ProfilePage(): JSX.Element {
             } else if (err.response?.status === 403) {
               setError('No tienes permisos para ver este perfil');
             } else {
-              setError(`Error al cargar el perfil (${err.response?.status || 'desconocido'}). Por favor, intenta nuevamente.`);
+              setError(
+                `Error al cargar el perfil (${err.response?.status || 'desconocido'}). Por favor, intenta nuevamente.`
+              );
             }
             return null;
           }),
@@ -63,7 +65,7 @@ export function ProfilePage(): JSX.Element {
         if (statsData) {
           setStats(statsData);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         logger.error('Error fetching profile', { error: err, username });
         if (!error) {
           setError('Error al cargar el perfil');
@@ -74,6 +76,7 @@ export function ProfilePage(): JSX.Element {
     };
 
     fetchProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, navigate]);
 
   const handleShare = async (): Promise<void> => {
@@ -89,7 +92,7 @@ export function ProfilePage(): JSX.Element {
 
   const handleBlock = async (): Promise<void> => {
     if (!username) return;
-    
+
     try {
       await blockService.blockUser(username);
       navigate('/videochat');
@@ -115,7 +118,9 @@ export function ProfilePage(): JSX.Element {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-3.5 xl:py-4 min-w-0 gap-4">
             <div className="flex items-center gap-3 xl:gap-4 min-w-0 flex-1">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex-shrink-0">Chatroulette</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex-shrink-0">
+                Chatroulette
+              </h1>
               <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 flex-shrink-0"></div>
               {profile && (
                 <div className="flex-1 min-w-0">
@@ -142,7 +147,10 @@ export function ProfilePage(): JSX.Element {
               )}
             </div>
             {/* App Header - User menu */}
-            <AppHeader className="flex-shrink-0 border-0 shadow-none bg-transparent" showLogo={false} />
+            <AppHeader
+              className="flex-shrink-0 border-0 shadow-none bg-transparent"
+              showLogo={false}
+            />
           </div>
         </div>
       </div>
@@ -157,7 +165,9 @@ export function ProfilePage(): JSX.Element {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden">
           {/* Header - Simple title */}
           <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Perfil de Usuario</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+              Perfil de Usuario
+            </h1>
           </div>
 
           {/* Content */}
@@ -199,7 +209,9 @@ export function ProfilePage(): JSX.Element {
                   <h3 className="mt-5 text-3xl font-bold text-gray-900 dark:text-white text-center">
                     {profile.name}
                   </h3>
-                  <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">@{profile.username}</p>
+                  <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
+                    @{profile.username}
+                  </p>
                 </div>
 
                 {/* Bio Section */}
@@ -232,7 +244,10 @@ export function ProfilePage(): JSX.Element {
                 {/* Stats Section */}
                 {stats && (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                    <div
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in-up"
+                      style={{ animationDelay: '0.2s' }}
+                    >
                       {/* Likes Received */}
                       <div className="bg-gradient-to-br from-pink-50 to-rose-100 dark:from-pink-900/30 dark:to-rose-800/30 rounded-lg p-4 border border-pink-200 dark:border-pink-700 shadow-sm">
                         <div className="flex items-center gap-3">
@@ -251,28 +266,34 @@ export function ProfilePage(): JSX.Element {
                               {stats.likesReceived || 0}
                             </p>
                             <p className="text-xs text-gray-600 dark:text-gray-400">
-                              {(stats.likesReceived || 0) === 1 ? 'Like recibido' : 'Likes recibidos'}
+                              {(stats.likesReceived || 0) === 1
+                                ? 'Like recibido'
+                                : 'Likes recibidos'}
                             </p>
                           </div>
                         </div>
                       </div>
 
                       {/* Reputation Score */}
-                      <div className={`bg-gradient-to-br rounded-lg p-4 border shadow-sm ${
-                        stats.reputationScore >= 501
-                          ? 'from-yellow-50 to-amber-100 dark:from-yellow-900/30 dark:to-amber-800/30 border-yellow-200 dark:border-yellow-700'
-                          : stats.reputationScore >= 101
-                            ? 'from-gray-50 to-slate-100 dark:from-gray-700/30 dark:to-slate-800/30 border-gray-200 dark:border-gray-700'
-                            : 'from-orange-50 to-amber-100 dark:from-orange-900/30 dark:to-amber-800/30 border-orange-200 dark:border-orange-700'
-                      }`}>
+                      <div
+                        className={`bg-gradient-to-br rounded-lg p-4 border shadow-sm ${
+                          stats.reputationScore >= 501
+                            ? 'from-yellow-50 to-amber-100 dark:from-yellow-900/30 dark:to-amber-800/30 border-yellow-200 dark:border-yellow-700'
+                            : stats.reputationScore >= 101
+                              ? 'from-gray-50 to-slate-100 dark:from-gray-700/30 dark:to-slate-800/30 border-gray-200 dark:border-gray-700'
+                              : 'from-orange-50 to-amber-100 dark:from-orange-900/30 dark:to-amber-800/30 border-orange-200 dark:border-orange-700'
+                        }`}
+                      >
                         <div className="flex items-center gap-3">
-                          <div className={`rounded-lg p-2 ${
-                            stats.reputationScore >= 501
-                              ? 'bg-yellow-500 dark:bg-yellow-600'
-                              : stats.reputationScore >= 101
-                                ? 'bg-gray-500 dark:bg-gray-600'
-                                : 'bg-orange-500 dark:bg-orange-600'
-                          }`}>
+                          <div
+                            className={`rounded-lg p-2 ${
+                              stats.reputationScore >= 501
+                                ? 'bg-yellow-500 dark:bg-yellow-600'
+                                : stats.reputationScore >= 101
+                                  ? 'bg-gray-500 dark:bg-gray-600'
+                                  : 'bg-orange-500 dark:bg-orange-600'
+                            }`}
+                          >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               className="h-6 w-6 text-white"
@@ -293,7 +314,11 @@ export function ProfilePage(): JSX.Element {
                               {stats.reputationScore}
                             </p>
                             <p className="text-xs text-gray-600 dark:text-gray-400">
-                              {stats.reputationScore >= 501 ? 'Oro' : stats.reputationScore >= 101 ? 'Plata' : 'Bronce'}
+                              {stats.reputationScore >= 501
+                                ? 'Oro'
+                                : stats.reputationScore >= 101
+                                  ? 'Plata'
+                                  : 'Bronce'}
                             </p>
                             {/* Reputation Progress Bar */}
                             <div className="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
@@ -316,7 +341,10 @@ export function ProfilePage(): JSX.Element {
                     </div>
 
                     {/* Time Active */}
-                    <div className="bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-800/30 rounded-lg p-4 border border-blue-200 dark:border-blue-700 shadow-sm animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+                    <div
+                      className="bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-800/30 rounded-lg p-4 border border-blue-200 dark:border-blue-700 shadow-sm animate-fade-in-up"
+                      style={{ animationDelay: '0.3s' }}
+                    >
                       <div className="flex items-center gap-3">
                         <div className="rounded-lg p-2 bg-blue-500 dark:bg-blue-600">
                           <svg
@@ -336,7 +364,8 @@ export function ProfilePage(): JSX.Element {
                         </div>
                         <div>
                           <p className="text-xl font-bold text-gray-900 dark:text-white">
-                            {stats.daysActive} {stats.daysActive === 1 ? 'día activo' : 'días activos'}
+                            {stats.daysActive}{' '}
+                            {stats.daysActive === 1 ? 'día activo' : 'días activos'}
                           </p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">
                             Miembro desde {formatDate(stats.joinedDate)}

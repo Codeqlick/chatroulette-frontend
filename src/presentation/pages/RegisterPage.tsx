@@ -22,8 +22,8 @@ export function RegisterPage(): JSX.Element {
     if (shouldNavigate && hasHydrated) {
       // Small delay to ensure auth state is fully persisted
       const timer = setTimeout(() => {
-      navigate('/videochat');
-      setShouldNavigate(false);
+        navigate('/videochat');
+        setShouldNavigate(false);
       }, 100);
       return () => {
         clearTimeout(timer);
@@ -41,19 +41,38 @@ export function RegisterPage(): JSX.Element {
       await register(email, password, name, username);
       // Esperar a que el estado se hidrate antes de navegar
       setShouldNavigate(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Manejar errores específicos
-      if (err?.response?.data?.error?.message) {
-        const errorMessage = err.response.data.error.message;
+      if (
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        err.response &&
+        typeof err.response === 'object' &&
+        'data' in err.response &&
+        err.response.data &&
+        typeof err.response.data === 'object' &&
+        'error' in err.response.data &&
+        err.response.data.error &&
+        typeof err.response.data.error === 'object' &&
+        'message' in err.response.data.error
+      ) {
+        const errorResponse = err.response as {
+          data: { error: { message: string } };
+        };
+        const errorMessage = errorResponse.data.error.message;
         if (errorMessage.includes('Username already taken') || errorMessage.includes('username')) {
           setError('Este nombre de usuario ya está en uso. Por favor elige otro.');
-        } else if (errorMessage.includes('Email already registered') || errorMessage.includes('email')) {
+        } else if (
+          errorMessage.includes('Email already registered') ||
+          errorMessage.includes('email')
+        ) {
           setError('Este email ya está registrado. Por favor inicia sesión.');
         } else {
           setError(errorMessage);
         }
       } else {
-      setError('Error al registrarse. Intenta nuevamente.');
+        setError('Error al registrarse. Intenta nuevamente.');
       }
       setLoading(false);
     }
@@ -131,4 +150,3 @@ export function RegisterPage(): JSX.Element {
     </div>
   );
 }
-

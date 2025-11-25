@@ -53,15 +53,11 @@ export class UserService {
   }
 
   async getPreferences(): Promise<MatchingPreferences> {
-    const response = await apiClient.instance.get<MatchingPreferences>(
-      '/users/preferences'
-    );
+    const response = await apiClient.instance.get<MatchingPreferences>('/users/preferences');
     return response.data;
   }
 
-  async updatePreferences(
-    preferences: MatchingPreferences
-  ): Promise<MatchingPreferences> {
+  async updatePreferences(preferences: MatchingPreferences): Promise<MatchingPreferences> {
     const response = await apiClient.instance.put<MatchingPreferences>(
       '/users/preferences',
       preferences
@@ -97,4 +93,3 @@ export class UserService {
 }
 
 export const userService = new UserService();
-

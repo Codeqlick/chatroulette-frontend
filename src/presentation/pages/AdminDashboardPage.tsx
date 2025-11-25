@@ -26,7 +26,13 @@ import {
   ClockIcon,
 } from '../components/Icons';
 
-type TabType = 'dashboard' | 'pending-reports' | 'reports-history' | 'users' | 'sessions' | 'audit-logs';
+type TabType =
+  | 'dashboard'
+  | 'pending-reports'
+  | 'reports-history'
+  | 'users'
+  | 'sessions'
+  | 'audit-logs';
 
 export function AdminDashboardPage(): JSX.Element {
   const navigate = useNavigate();
@@ -57,6 +63,7 @@ export function AdminDashboardPage(): JSX.Element {
     if (activeTab === 'dashboard' || activeTab === 'pending-reports') {
       loadData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, accessToken, user, navigate, activeTab]);
 
   const loadData = async (): Promise<void> => {
@@ -76,9 +83,7 @@ export function AdminDashboardPage(): JSX.Element {
       setReports(response.reports);
     } catch (err) {
       const errorMessage =
-        err instanceof Error
-          ? err.message
-          : 'Error al cargar reportes. Intenta nuevamente.';
+        err instanceof Error ? err.message : 'Error al cargar reportes. Intenta nuevamente.';
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -109,9 +114,7 @@ export function AdminDashboardPage(): JSX.Element {
       setSelectedReport(null);
     } catch (err) {
       const errorMessage =
-        err instanceof Error
-          ? err.message
-          : 'Error al revisar reporte. Intenta nuevamente.';
+        err instanceof Error ? err.message : 'Error al revisar reporte. Intenta nuevamente.';
       alert(errorMessage);
     } finally {
       setIsReviewing(false);
@@ -129,8 +132,7 @@ export function AdminDashboardPage(): JSX.Element {
       report.reportedUser?.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       report.category.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesCategory =
-      filterCategory === 'all' || report.category === filterCategory;
+    const matchesCategory = filterCategory === 'all' || report.category === filterCategory;
 
     return matchesSearch && matchesCategory;
   });
@@ -144,8 +146,16 @@ export function AdminDashboardPage(): JSX.Element {
 
   const tabs: Array<{ id: TabType; label: string; icon: JSX.Element }> = [
     { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon className="w-5 h-5" /> },
-    { id: 'pending-reports', label: 'Reportes Pendientes', icon: <WarningIcon className="w-5 h-5" /> },
-    { id: 'reports-history', label: 'Historial de Reportes', icon: <ClipboardIcon className="w-5 h-5" /> },
+    {
+      id: 'pending-reports',
+      label: 'Reportes Pendientes',
+      icon: <WarningIcon className="w-5 h-5" />,
+    },
+    {
+      id: 'reports-history',
+      label: 'Historial de Reportes',
+      icon: <ClipboardIcon className="w-5 h-5" />,
+    },
     { id: 'users', label: 'Gestión de Usuarios', icon: <UsersIcon className="w-5 h-5" /> },
     { id: 'sessions', label: 'Sesiones Activas', icon: <ChatIcon className="w-5 h-5" /> },
     { id: 'audit-logs', label: 'Logs de Auditoría', icon: <DocumentIcon className="w-5 h-5" /> },
@@ -155,7 +165,9 @@ export function AdminDashboardPage(): JSX.Element {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white flex items-center justify-center">
         <div className="text-center">
-          <p className="text-lg">Acceso denegado. Solo administradores pueden acceder a esta página.</p>
+          <p className="text-lg">
+            Acceso denegado. Solo administradores pueden acceder a esta página.
+          </p>
           <Button onClick={() => navigate('/videochat')} className="mt-4">
             Volver al inicio
           </Button>
@@ -171,15 +183,27 @@ export function AdminDashboardPage(): JSX.Element {
         <div className="bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-700 dark:to-primary-800 rounded-xl shadow-xl p-6 mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Panel de Administración</h1>
+              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+                Panel de Administración
+              </h1>
               <p className="text-primary-100 text-sm">Bienvenido, {user.name}</p>
             </div>
             <div className="flex items-center gap-3">
               <ThemeToggle />
-              <Button variant="secondary" size="sm" onClick={() => navigate('/videochat')} className="bg-white/10 hover:bg-white/20 text-white border-white/20">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => navigate('/videochat')}
+                className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+              >
                 Volver
               </Button>
-              <Button variant="secondary" size="sm" onClick={logout} className="bg-white/10 hover:bg-white/20 text-white border-white/20">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={logout}
+                className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+              >
                 Cerrar Sesión
               </Button>
             </div>
@@ -199,7 +223,9 @@ export function AdminDashboardPage(): JSX.Element {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                 }`}
               >
-                <span className={activeTab === tab.id ? 'text-primary-600 dark:text-primary-400' : ''}>
+                <span
+                  className={activeTab === tab.id ? 'text-primary-600 dark:text-primary-400' : ''}
+                >
                   {tab.icon}
                 </span>
                 {tab.label}
@@ -226,7 +252,9 @@ export function AdminDashboardPage(): JSX.Element {
                 </div>
               ) : stats ? (
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-6 shadow-xl transition-colors border border-gray-200 dark:border-gray-700">
-                  <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Estadísticas Generales</h2>
+                  <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+                    Estadísticas Generales
+                  </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-blue-400 dark:border-blue-600">
                       <div className="flex items-center justify-between mb-4">
@@ -235,8 +263,12 @@ export function AdminDashboardPage(): JSX.Element {
                       <p className="text-sm text-blue-100 mb-2 font-medium">Usuarios Totales</p>
                       <p className="text-4xl font-bold text-white mb-3">{stats.users.total}</p>
                       <div className="flex gap-3 text-xs text-blue-100">
-                        <span className="bg-white/20 px-2 py-1 rounded">{stats.users.active} activos</span>
-                        <span className="bg-red-500/30 px-2 py-1 rounded">{stats.users.banned} baneados</span>
+                        <span className="bg-white/20 px-2 py-1 rounded">
+                          {stats.users.active} activos
+                        </span>
+                        <span className="bg-red-500/30 px-2 py-1 rounded">
+                          {stats.users.banned} baneados
+                        </span>
                       </div>
                     </div>
                     <div className="bg-gradient-to-br from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-purple-400 dark:border-purple-600">
@@ -246,8 +278,12 @@ export function AdminDashboardPage(): JSX.Element {
                       <p className="text-sm text-purple-100 mb-2 font-medium">Sesiones</p>
                       <p className="text-4xl font-bold text-white mb-3">{stats.sessions.total}</p>
                       <div className="flex gap-3 text-xs text-purple-100">
-                        <span className="bg-white/20 px-2 py-1 rounded">{stats.sessions.active} activas</span>
-                        <span className="bg-white/20 px-2 py-1 rounded">{stats.sessions.ended} finalizadas</span>
+                        <span className="bg-white/20 px-2 py-1 rounded">
+                          {stats.sessions.active} activas
+                        </span>
+                        <span className="bg-white/20 px-2 py-1 rounded">
+                          {stats.sessions.ended} finalizadas
+                        </span>
                       </div>
                     </div>
                     <div className="bg-gradient-to-br from-yellow-500 to-orange-500 dark:from-yellow-600 dark:to-orange-600 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-yellow-400 dark:border-yellow-600">
@@ -257,8 +293,12 @@ export function AdminDashboardPage(): JSX.Element {
                       <p className="text-sm text-yellow-100 mb-2 font-medium">Reportes</p>
                       <p className="text-4xl font-bold text-white mb-3">{stats.reports.total}</p>
                       <div className="flex gap-3 text-xs text-yellow-100">
-                        <span className="bg-white/20 px-2 py-1 rounded">{stats.reports.pending} pendientes</span>
-                        <span className="bg-green-500/30 px-2 py-1 rounded">{stats.reports.resolved} resueltos</span>
+                        <span className="bg-white/20 px-2 py-1 rounded">
+                          {stats.reports.pending} pendientes
+                        </span>
+                        <span className="bg-green-500/30 px-2 py-1 rounded">
+                          {stats.reports.resolved} resueltos
+                        </span>
                       </div>
                     </div>
                     <div className="bg-gradient-to-br from-green-500 to-emerald-500 dark:from-green-600 dark:to-emerald-600 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border border-green-400 dark:border-green-600">
@@ -268,7 +308,9 @@ export function AdminDashboardPage(): JSX.Element {
                       <p className="text-sm text-green-100 mb-2 font-medium">Mensajes</p>
                       <p className="text-4xl font-bold text-white mb-3">{stats.messages.total}</p>
                       <div className="flex gap-3 text-xs text-green-100">
-                        <span className="bg-white/20 px-2 py-1 rounded">{stats.messages.today} hoy</span>
+                        <span className="bg-white/20 px-2 py-1 rounded">
+                          {stats.messages.today} hoy
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -281,11 +323,13 @@ export function AdminDashboardPage(): JSX.Element {
           )}
 
           {activeTab === 'pending-reports' && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg transition-colors border border-gray-200 dark:border-gray-700">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg transition-colors border border-gray-200 dark:border-gray-700">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Reportes Pendientes</h2>
-                  
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    Reportes Pendientes
+                  </h2>
+
                   {/* Search and Filter */}
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <div className="relative">
@@ -316,68 +360,80 @@ export function AdminDashboardPage(): JSX.Element {
                     Mostrando {filteredReports.length} de {reports.length} reportes
                   </p>
                 )}
-          </div>
-
-          {isLoading ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-              <p className="text-gray-600 dark:text-gray-400">Cargando reportes...</p>
-            </div>
-          ) : error ? (
-            <div className="p-8 text-center">
-              <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded-lg mb-4">
-                {error}
               </div>
-              <Button onClick={loadReports}>Reintentar</Button>
-            </div>
+
+              {isLoading ? (
+                <div className="p-8 text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+                  <p className="text-gray-600 dark:text-gray-400">Cargando reportes...</p>
+                </div>
+              ) : error ? (
+                <div className="p-8 text-center">
+                  <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded-lg mb-4">
+                    {error}
+                  </div>
+                  <Button onClick={loadReports}>Reintentar</Button>
+                </div>
               ) : filteredReports.length === 0 ? (
-            <div className="p-8 text-center text-gray-600 dark:text-gray-400">
+                <div className="p-8 text-center text-gray-600 dark:text-gray-400">
                   {searchTerm || filterCategory !== 'all'
                     ? 'No se encontraron reportes con los filtros aplicados.'
                     : 'No hay reportes pendientes.'}
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
                   {filteredReports.map((report) => (
-                <div
-                  key={report.id}
-                  className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all cursor-pointer border-l-4 border-transparent hover:border-primary-500"
-                  onClick={() => setSelectedReport(report)}
-                >
+                    <div
+                      key={report.id}
+                      className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all cursor-pointer border-l-4 border-transparent hover:border-primary-500"
+                      onClick={() => setSelectedReport(report)}
+                    >
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-3 flex-wrap">
-                        <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 rounded-full text-xs font-semibold">
+                            <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 rounded-full text-xs font-semibold">
                               {categoryLabels[report.category] || report.category}
-                        </span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                          <ClockIcon className="w-4 h-4" />
-                          {new Date(report.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                      {report.description && (
+                            </span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                              <ClockIcon className="w-4 h-4" />
+                              {new Date(report.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                          {report.description && (
                             <p className="text-gray-700 dark:text-gray-300 mb-4 line-clamp-2 text-sm">
-                          {report.description}
-                        </p>
-                      )}
+                              {report.description}
+                            </p>
+                          )}
                           <div className="flex flex-wrap gap-6 text-sm">
                             {report.reporter && (
                               <div className="flex items-center gap-2">
                                 <UserIcon className="w-4 h-4 text-gray-400" />
-                                <span className="text-gray-500 dark:text-gray-400">Reportado por:</span>
+                                <span className="text-gray-500 dark:text-gray-400">
+                                  Reportado por:
+                                </span>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-semibold text-gray-900 dark:text-white">{report.reporter.name}</span>
-                                  <span className="text-gray-500 dark:text-gray-400">@{report.reporter.username}</span>
+                                  <span className="font-semibold text-gray-900 dark:text-white">
+                                    {report.reporter.name}
+                                  </span>
+                                  <span className="text-gray-500 dark:text-gray-400">
+                                    @{report.reporter.username}
+                                  </span>
                                 </div>
                               </div>
                             )}
                             {report.reportedUser && (
                               <div className="flex items-center gap-2">
                                 <UserIcon className="w-4 h-4 text-gray-400" />
-                                <span className="text-gray-500 dark:text-gray-400">Usuario reportado:</span>
+                                <span className="text-gray-500 dark:text-gray-400">
+                                  Usuario reportado:
+                                </span>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-semibold text-gray-900 dark:text-white">{report.reportedUser.name}</span>
-                                  <span className="text-gray-500 dark:text-gray-400">@{report.reportedUser.username}</span>
+                                  <span className="font-semibold text-gray-900 dark:text-white">
+                                    {report.reportedUser.name}
+                                  </span>
+                                  <span className="text-gray-500 dark:text-gray-400">
+                                    @{report.reportedUser.username}
+                                  </span>
                                   {report.reportedUser.isBanned && (
                                     <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-full text-xs font-semibold">
                                       Baneado
@@ -386,24 +442,24 @@ export function AdminDashboardPage(): JSX.Element {
                                 </div>
                               </div>
                             )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedReport(report);
+                          }}
+                          className="shrink-0"
+                        >
+                          Revisar
+                        </Button>
                       </div>
                     </div>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedReport(report);
-                      }}
-                      className="shrink-0"
-                    >
-                      Revisar
-                    </Button>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
             </div>
           )}
 
@@ -420,7 +476,9 @@ export function AdminDashboardPage(): JSX.Element {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 animate-scale-in">
             <div className="sticky top-0 bg-white dark:bg-gray-800 p-6 border-b border-gray-200 dark:border-gray-700 z-10">
               <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Detalles del Reporte</h3>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Detalles del Reporte
+                </h3>
                 <button
                   onClick={() => setSelectedReport(null)}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -457,8 +515,12 @@ export function AdminDashboardPage(): JSX.Element {
                     <div className="mt-2 flex items-center gap-2">
                       <UserIcon className="w-5 h-5 text-gray-400" />
                       <div>
-                        <p className="font-semibold text-gray-900 dark:text-white">{selectedReport.reporter.name}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">@{selectedReport.reporter.username}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {selectedReport.reporter.name}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          @{selectedReport.reporter.username}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -471,8 +533,12 @@ export function AdminDashboardPage(): JSX.Element {
                     <div className="mt-2 flex items-center gap-2">
                       <UserIcon className="w-5 h-5 text-gray-400" />
                       <div>
-                        <p className="font-semibold text-gray-900 dark:text-white">{selectedReport.reportedUser.name}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">@{selectedReport.reportedUser.username}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {selectedReport.reportedUser.name}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          @{selectedReport.reportedUser.username}
+                        </p>
                         {selectedReport.reportedUser.isBanned && (
                           <span className="inline-block mt-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-full text-xs font-semibold">
                             Usuario baneado
@@ -488,7 +554,9 @@ export function AdminDashboardPage(): JSX.Element {
                   <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 block">
                     Sesión ID
                   </label>
-                  <p className="mt-2 font-mono text-sm text-gray-900 dark:text-white break-all">{selectedReport.sessionId}</p>
+                  <p className="mt-2 font-mono text-sm text-gray-900 dark:text-white break-all">
+                    {selectedReport.sessionId}
+                  </p>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
                   <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 block">
@@ -503,9 +571,7 @@ export function AdminDashboardPage(): JSX.Element {
               <div className="flex gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <Button
                   variant="primary"
-                  onClick={() =>
-                    handleReviewReport(selectedReport.id, 'RESOLVED')
-                  }
+                  onClick={() => handleReviewReport(selectedReport.id, 'RESOLVED')}
                   isLoading={isReviewing}
                   disabled={isReviewing}
                   className="flex-1 flex items-center justify-center gap-2"
@@ -515,9 +581,7 @@ export function AdminDashboardPage(): JSX.Element {
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() =>
-                    handleReviewReport(selectedReport.id, 'DISMISSED')
-                  }
+                  onClick={() => handleReviewReport(selectedReport.id, 'DISMISSED')}
                   isLoading={isReviewing}
                   disabled={isReviewing}
                   className="flex-1 flex items-center justify-center gap-2"

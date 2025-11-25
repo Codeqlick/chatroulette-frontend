@@ -29,17 +29,21 @@ export class PaymentService {
   }
 
   async confirmUnbanPayment(paymentIntentId: string): Promise<ConfirmUnbanPaymentResponse> {
-    const response = await apiClient.instance.post<ConfirmUnbanPaymentResponse>('/payments/unban/confirm', {
-      paymentIntentId,
-    });
+    const response = await apiClient.instance.post<ConfirmUnbanPaymentResponse>(
+      '/payments/unban/confirm',
+      {
+        paymentIntentId,
+      }
+    );
     return response.data;
   }
 
   async getPaymentHistory(): Promise<PaymentHistoryItem[]> {
-    const response = await apiClient.instance.get<{ payments: PaymentHistoryItem[] }>('/payments/history');
+    const response = await apiClient.instance.get<{ payments: PaymentHistoryItem[] }>(
+      '/payments/history'
+    );
     return response.data.payments;
   }
 }
 
 export const paymentService = new PaymentService();
-

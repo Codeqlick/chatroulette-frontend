@@ -16,10 +16,12 @@ export function ActiveSessions(): JSX.Element {
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [endingSessionId, setEndingSessionId] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; sessionId: string | null }>({
-    isOpen: false,
-    sessionId: null,
-  });
+  const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; sessionId: string | null }>(
+    {
+      isOpen: false,
+      sessionId: null,
+    }
+  );
   const [alertDialog, setAlertDialog] = useState<{ isOpen: boolean; message: string }>({
     isOpen: false,
     message: '',
@@ -31,6 +33,7 @@ export function ActiveSessions(): JSX.Element {
     // Refresh every 10 seconds
     const interval = setInterval(loadSessions, 10000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]);
 
   const loadSessions = async (): Promise<void> => {
@@ -96,10 +99,16 @@ export function ActiveSessions(): JSX.Element {
               Sesiones Activas
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Total: <span className="font-semibold text-gray-700 dark:text-gray-300">{total}</span> sesión{total !== 1 ? 'es' : ''}
+              Total: <span className="font-semibold text-gray-700 dark:text-gray-300">{total}</span>{' '}
+              sesión{total !== 1 ? 'es' : ''}
             </p>
           </div>
-          <Button variant="secondary" size="sm" onClick={loadSessions} className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={loadSessions}
+            className="flex items-center gap-2"
+          >
             <ArrowPathIcon className="w-4 h-4" />
             Actualizar
           </Button>
@@ -140,13 +149,21 @@ export function ActiveSessions(): JSX.Element {
                           className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={() => navigate(`/profile/${session.user1.username}`)}
                         >
-                          <Avatar name={session.user1.name} avatar={session.user1.avatar} size="lg" />
+                          <Avatar
+                            name={session.user1.name}
+                            avatar={session.user1.avatar}
+                            size="lg"
+                          />
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <UserIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                              <p className="font-semibold text-gray-900 dark:text-white">{session.user1.name}</p>
+                              <p className="font-semibold text-gray-900 dark:text-white">
+                                {session.user1.name}
+                              </p>
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">@{session.user1.username}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              @{session.user1.username}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -157,13 +174,21 @@ export function ActiveSessions(): JSX.Element {
                           className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={() => navigate(`/profile/${session.user2.username}`)}
                         >
-                          <Avatar name={session.user2.name} avatar={session.user2.avatar} size="lg" />
+                          <Avatar
+                            name={session.user2.name}
+                            avatar={session.user2.avatar}
+                            size="lg"
+                          />
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <UserIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                              <p className="font-semibold text-gray-900 dark:text-white">{session.user2.name}</p>
+                              <p className="font-semibold text-gray-900 dark:text-white">
+                                {session.user2.name}
+                              </p>
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">@{session.user2.username}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              @{session.user2.username}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -173,7 +198,9 @@ export function ActiveSessions(): JSX.Element {
                       <div className="text-right">
                         <div className="flex items-center gap-2 mb-2">
                           <ClockIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Duración</p>
+                          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            Duración
+                          </p>
                         </div>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                           {formatDuration(session.duration)}
@@ -209,7 +236,9 @@ export function ActiveSessions(): JSX.Element {
                 >
                   Anterior
                 </Button>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Página {currentPage + 1}</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Página {currentPage + 1}
+                </span>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -248,4 +277,3 @@ export function ActiveSessions(): JSX.Element {
     </div>
   );
 }
-

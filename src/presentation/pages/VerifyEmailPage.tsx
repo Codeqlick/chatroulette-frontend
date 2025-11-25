@@ -45,7 +45,7 @@ export function VerifyEmailPage(): JSX.Element {
       setLoading(true);
       await authService.sendVerificationEmail();
       setMessage('Email de verificación enviado. Revisa tu bandeja de entrada.');
-    } catch (error) {
+    } catch {
       setMessage('Error al enviar el email de verificación. Intenta nuevamente.');
     } finally {
       setLoading(false);
@@ -59,7 +59,9 @@ export function VerifyEmailPage(): JSX.Element {
       </div>
       <div className="max-w-md w-full space-y-8 p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg transition-colors animate-fade-in">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Verificación de Email</h2>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Verificación de Email
+          </h2>
         </div>
 
         {status === 'verifying' && (
@@ -73,10 +75,7 @@ export function VerifyEmailPage(): JSX.Element {
           <div className="text-center space-y-4">
             <div className="text-green-500 text-5xl mb-4">✓</div>
             <p className="text-white text-lg">{message}</p>
-            <Button
-              onClick={() => navigate('/videochat')}
-              className="w-full"
-            >
+            <Button onClick={() => navigate('/videochat')} className="w-full">
               Ir al inicio
             </Button>
           </div>
@@ -109,4 +108,3 @@ export function VerifyEmailPage(): JSX.Element {
     </div>
   );
 }
-

@@ -32,4 +32,3 @@ export const WEBSOCKET_EVENTS = {
   ROOM_READY: 'room:ready',
   ERROR: 'error',
 } as const;
-

@@ -11,7 +11,12 @@ interface AppHeaderProps {
   children?: React.ReactNode; // Slot para controles personalizados si se necesita en el futuro
 }
 
-export function AppHeader({ className = '', showLogo = true, showControls = false, children }: AppHeaderProps): JSX.Element {
+export function AppHeader({
+  className = '',
+  showLogo = true,
+  showControls = false,
+  children,
+}: AppHeaderProps): JSX.Element {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -79,11 +84,7 @@ export function AppHeader({ className = '', showLogo = true, showControls = fals
       {/* Right Section */}
       <div className="flex items-center gap-3">
         {/* Custom Controls Slot - for future use */}
-        {showControls && children && (
-          <div className="flex items-center gap-2">
-            {children}
-          </div>
-        )}
+        {showControls && children && <div className="flex items-center gap-2">{children}</div>}
         {/* User Avatar and Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button
@@ -115,7 +116,12 @@ export function AppHeader({ className = '', showLogo = true, showControls = fals
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
 
@@ -134,12 +140,7 @@ export function AppHeader({ className = '', showLogo = true, showControls = fals
                   onClick={handleViewProfile}
                   className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -155,12 +156,7 @@ export function AppHeader({ className = '', showLogo = true, showControls = fals
                     onClick={handleNavigateToAdmin}
                     className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -189,12 +185,7 @@ export function AppHeader({ className = '', showLogo = true, showControls = fals
                   onClick={handleLogout}
                   className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -212,4 +203,3 @@ export function AppHeader({ className = '', showLogo = true, showControls = fals
     </div>
   );
 }
-

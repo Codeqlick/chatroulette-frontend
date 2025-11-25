@@ -31,18 +31,12 @@ export interface RefreshTokenResponse {
 
 export class AuthService {
   async register(request: RegisterRequest): Promise<AuthResponse> {
-    const response = await apiClient.instance.post<AuthResponse>(
-      '/auth/register',
-      request
-    );
+    const response = await apiClient.instance.post<AuthResponse>('/auth/register', request);
     return response.data;
   }
 
   async login(request: LoginRequest): Promise<AuthResponse> {
-    const response = await apiClient.instance.post<AuthResponse>(
-      '/auth/login',
-      request
-    );
+    const response = await apiClient.instance.post<AuthResponse>('/auth/login', request);
     return response.data;
   }
 
@@ -63,13 +57,11 @@ export class AuthService {
   }
 
   async refreshToken(refreshToken: string): Promise<RefreshTokenResponse> {
-    const response = await apiClient.instance.post<RefreshTokenResponse>(
-      '/auth/refresh',
-      { refreshToken }
-    );
+    const response = await apiClient.instance.post<RefreshTokenResponse>('/auth/refresh', {
+      refreshToken,
+    });
     return response.data;
   }
 }
 
 export const authService = new AuthService();
-

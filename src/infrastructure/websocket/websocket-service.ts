@@ -86,11 +86,15 @@ export class WebSocketService {
     this.socket.on('connect_error', async (error: Error) => {
       this.status = 'error';
       this.onStatusChange?.(this.status);
-      
+
       // Check if it's an authentication error
-      if (error.message.includes('Authentication') || error.message.includes('Invalid token') || error.message.includes('jwt expired')) {
+      if (
+        error.message.includes('Authentication') ||
+        error.message.includes('Invalid token') ||
+        error.message.includes('jwt expired')
+      ) {
         logger.warn('Authentication error detected, attempting to refresh token and reconnect');
-        
+
         try {
           const state = useAuthStore.getState();
           // Try to refresh token
@@ -135,7 +139,7 @@ export class WebSocketService {
     }
 
     const wasConnected = this.socket?.connected ?? false;
-    
+
     // Disconnect current socket
     if (this.socket) {
       this.socket.disconnect();
@@ -195,7 +199,10 @@ export class WebSocketService {
    * Remove heartbeat listener
    */
   offHeartbeat(callback?: () => void): void {
-    this.off(WEBSOCKET_EVENTS.SERVER_HEARTBEAT, callback as (...args: unknown[]) => void | undefined);
+    this.off(
+      WEBSOCKET_EVENTS.SERVER_HEARTBEAT,
+      callback as (...args: unknown[]) => void | undefined
+    );
   }
 
   getStatus(): WebSocketStatus {
@@ -214,7 +221,7 @@ export class WebSocketService {
     }
 
     this.reconnectAttempts++;
-    
+
     // Get current token from store
     const state = useAuthStore.getState();
     const token = state.accessToken;
@@ -236,4 +243,3 @@ export class WebSocketService {
 }
 
 export const webSocketService = new WebSocketService();
-

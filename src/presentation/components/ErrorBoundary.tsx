@@ -38,9 +38,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="mb-6">
               <div className="text-red-500 text-6xl mb-4">⚠️</div>
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-red-500">
-              Algo salió mal
-            </h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-red-500">Algo salió mal</h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
               Ocurrió un error inesperado. Por favor, intenta recargar la página.
             </p>
@@ -50,11 +48,7 @@ export class ErrorBoundary extends Component<Props, State> {
               </p>
             )}
             <div className="flex gap-4 justify-center">
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => window.location.reload()}
-              >
+              <Button variant="primary" size="lg" onClick={() => window.location.reload()}>
                 Recargar Página
               </Button>
             </div>
@@ -66,4 +60,3 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
-

@@ -34,8 +34,8 @@ const envSchema = z.object({
         message: isDevelopmentUrl(url)
           ? 'VITE_API_URL debe ser una URL válida'
           : isProduction
-          ? 'VITE_API_URL debe ser HTTPS en producción (ej: https://api.codeqlick.com/api/v1)'
-          : 'VITE_API_URL debe ser una URL válida',
+            ? 'VITE_API_URL debe ser HTTPS en producción (ej: https://api.codeqlick.com/api/v1)'
+            : 'VITE_API_URL debe ser una URL válida',
       })
     )
     .default('http://localhost:3000/api/v1'),
@@ -58,8 +58,8 @@ const envSchema = z.object({
         message: isDevelopmentUrl(url)
           ? 'VITE_WS_URL debe ser una URL válida'
           : isProduction
-          ? 'VITE_WS_URL debe ser WSS en producción (ej: wss://api.codeqlick.com)'
-          : 'VITE_WS_URL debe ser una URL válida',
+            ? 'VITE_WS_URL debe ser WSS en producción (ej: wss://api.codeqlick.com)'
+            : 'VITE_WS_URL debe ser una URL válida',
       })
     )
     .default('ws://localhost:3000'),
@@ -99,4 +99,3 @@ export function getEnv(): Env {
   }
   return env;
 }
-

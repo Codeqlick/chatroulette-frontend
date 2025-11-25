@@ -282,10 +282,7 @@ export interface ReviewReportResponse {
 }
 
 export class AdminService {
-  async getPendingReports(
-    limit?: number,
-    offset?: number
-  ): Promise<PendingReportsResponse> {
+  async getPendingReports(limit?: number, offset?: number): Promise<PendingReportsResponse> {
     const params = new URLSearchParams();
     if (limit !== undefined) {
       params.append('limit', limit.toString());
@@ -330,7 +327,8 @@ export class AdminService {
     if (params?.offset !== undefined) queryParams.append('offset', params.offset.toString());
     if (params?.search) queryParams.append('search', params.search);
     if (params?.isBanned !== undefined) queryParams.append('isBanned', params.isBanned.toString());
-    if (params?.emailVerified !== undefined) queryParams.append('emailVerified', params.emailVerified.toString());
+    if (params?.emailVerified !== undefined)
+      queryParams.append('emailVerified', params.emailVerified.toString());
     if (params?.role) queryParams.append('role', params.role);
 
     const queryString = queryParams.toString();
@@ -345,12 +343,18 @@ export class AdminService {
   }
 
   async banUser(userId: string, request: BanUserRequest): Promise<BanUserResponse> {
-    const response = await apiClient.instance.post<BanUserResponse>(`/admin/users/${userId}/ban`, request);
+    const response = await apiClient.instance.post<BanUserResponse>(
+      `/admin/users/${userId}/ban`,
+      request
+    );
     return response.data;
   }
 
   async unbanUser(userId: string): Promise<UnbanUserResponse> {
-    const response = await apiClient.instance.post<UnbanUserResponse>(`/admin/users/${userId}/unban`, {});
+    const response = await apiClient.instance.post<UnbanUserResponse>(
+      `/admin/users/${userId}/unban`,
+      {}
+    );
     return response.data;
   }
 
@@ -393,7 +397,10 @@ export class AdminService {
   }
 
   async endSession(sessionId: string, reason?: string): Promise<EndSessionResponse> {
-    const response = await apiClient.instance.post<EndSessionResponse>(`/admin/sessions/${sessionId}/end`, { reason });
+    const response = await apiClient.instance.post<EndSessionResponse>(
+      `/admin/sessions/${sessionId}/end`,
+      { reason }
+    );
     return response.data;
   }
 
@@ -422,10 +429,11 @@ export class AdminService {
   }
 
   async getAdvancedStats(period: 'day' | 'week' | 'month' = 'week'): Promise<AdvancedStats> {
-    const response = await apiClient.instance.get<AdvancedStats>(`/admin/stats/advanced?period=${period}`);
+    const response = await apiClient.instance.get<AdvancedStats>(
+      `/admin/stats/advanced?period=${period}`
+    );
     return response.data;
   }
 }
 
 export const adminService = new AdminService();
-

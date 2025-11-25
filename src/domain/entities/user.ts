@@ -31,4 +31,3 @@ export function createUser(data: {
     updatedAt: data.updatedAt ?? new Date(),
   };
 }
-

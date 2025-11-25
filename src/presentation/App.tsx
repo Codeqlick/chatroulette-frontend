@@ -8,15 +8,33 @@ import { tokenRefreshService } from '@infrastructure/auth/token-refresh-service'
 import { logger } from '@infrastructure/logging/frontend-logger';
 
 // Lazy load pages for code splitting
-const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
-const LoginPage = lazy(() => import('./pages/LoginPage').then(module => ({ default: module.LoginPage })));
-const RegisterPage = lazy(() => import('./pages/RegisterPage').then(module => ({ default: module.RegisterPage })));
-const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage').then(module => ({ default: module.VerifyEmailPage })));
-const VideochatPage = lazy(() => import('./pages/VideochatPage').then(module => ({ default: module.VideochatPage })));
-const ChatPage = lazy(() => import('./pages/ChatPage').then(module => ({ default: module.ChatPage })));
-const ProfilePage = lazy(() => import('./pages/ProfilePage').then(module => ({ default: module.ProfilePage })));
-const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then(module => ({ default: module.AdminDashboardPage })));
-const BannedPage = lazy(() => import('./pages/BannedPage').then(module => ({ default: module.BannedPage })));
+const LandingPage = lazy(() =>
+  import('./pages/LandingPage').then((module) => ({ default: module.LandingPage }))
+);
+const LoginPage = lazy(() =>
+  import('./pages/LoginPage').then((module) => ({ default: module.LoginPage }))
+);
+const RegisterPage = lazy(() =>
+  import('./pages/RegisterPage').then((module) => ({ default: module.RegisterPage }))
+);
+const VerifyEmailPage = lazy(() =>
+  import('./pages/VerifyEmailPage').then((module) => ({ default: module.VerifyEmailPage }))
+);
+const VideochatPage = lazy(() =>
+  import('./pages/VideochatPage').then((module) => ({ default: module.VideochatPage }))
+);
+const ChatPage = lazy(() =>
+  import('./pages/ChatPage').then((module) => ({ default: module.ChatPage }))
+);
+const ProfilePage = lazy(() =>
+  import('./pages/ProfilePage').then((module) => ({ default: module.ProfilePage }))
+);
+const AdminDashboardPage = lazy(() =>
+  import('./pages/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage }))
+);
+const BannedPage = lazy(() =>
+  import('./pages/BannedPage').then((module) => ({ default: module.BannedPage }))
+);
 
 // Loading component
 function LoadingSpinner(): JSX.Element {
@@ -108,4 +126,3 @@ function App(): JSX.Element {
 }
 
 export default App;
-

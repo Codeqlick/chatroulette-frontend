@@ -44,4 +44,3 @@ export function ThemeToggle(): JSX.Element {
     </button>
   );
 }
-

@@ -36,7 +36,7 @@ export const useAuthStore = create<AuthState>()(
       login: async (email: string, password: string) => {
         // Limpiar estado de chat antes de iniciar sesión
         useChatStore.getState().clearSession();
-        
+
         const response = await authService.login({ email, password });
         set({
           user: response.user as User,
@@ -50,7 +50,7 @@ export const useAuthStore = create<AuthState>()(
       register: async (email: string, password: string, name: string, username: string) => {
         // Limpiar estado de chat antes de registrar
         useChatStore.getState().clearSession();
-        
+
         const response = await authService.register({ email, password, name, username });
         set({
           user: response.user as User,
@@ -64,7 +64,7 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         // Limpiar estado de chat al cerrar sesión
         useChatStore.getState().clearSession();
-        
+
         set({
           user: null,
           accessToken: null,
@@ -73,7 +73,7 @@ export const useAuthStore = create<AuthState>()(
         });
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        
+
         // Disconnect WebSocket
         webSocketService.disconnect();
       },
@@ -169,4 +169,3 @@ export const useAuthStore = create<AuthState>()(
 export const useAuthHydrated = (): boolean => {
   return useAuthStore((state) => state._hasHydrated);
 };
-

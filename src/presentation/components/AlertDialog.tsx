@@ -82,9 +82,7 @@ export function AlertDialog({
         <div
           className={`relative w-full max-w-md transform overflow-hidden rounded-2xl ${styles.bg} ${styles.border} border p-6 text-left align-middle shadow-xl transition-all`}
         >
-          <h3 className={`text-lg font-medium leading-6 ${styles.icon} mb-4`}>
-            {title}
-          </h3>
+          <h3 className={`text-lg font-medium leading-6 ${styles.icon} mb-4`}>{title}</h3>
           <div className="mt-2">
             <p className="text-sm text-gray-700 dark:text-gray-300">{message}</p>
           </div>
@@ -103,4 +101,3 @@ export function AlertDialog({
     </div>
   );
 }
-

@@ -1,6 +1,6 @@
 /**
  * Token Refresh Service
- * 
+ *
  * Servicio que monitorea la expiración de tokens y los refresca automáticamente
  * antes de que expiren para evitar errores de autenticación.
  */
@@ -65,7 +65,7 @@ export class TokenRefreshService {
     // Check if token is expiring soon
     if (state.isTokenExpiringSoon()) {
       logger.debug('Token is expiring soon, refreshing');
-      
+
       this.isRefreshing = true;
       try {
         await state.refreshAccessToken();
@@ -88,4 +88,3 @@ export class TokenRefreshService {
 }
 
 export const tokenRefreshService = new TokenRefreshService();
-

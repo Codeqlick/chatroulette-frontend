@@ -1,6 +1,6 @@
 /**
  * Frontend Logger Service
- * 
+ *
  * Provides structured logging for the frontend application.
  * Replaces console.log/error/warn with a proper logging service.
  */
@@ -31,20 +31,21 @@ class FrontendLogger {
     if (this.isDevelopment) {
       const colorMap: Record<LogLevel, string> = {
         debug: '\x1b[36m', // Cyan
-        info: '\x1b[32m',  // Green
-        warn: '\x1b[33m',  // Yellow
+        info: '\x1b[32m', // Green
+        warn: '\x1b[33m', // Yellow
         error: '\x1b[31m', // Red
       };
       const reset = '\x1b[0m';
       const color = colorMap[level] || reset;
-      
-      // eslint-disable-next-line no-console
-      console[level === 'debug' ? 'log' : level](`${color}[${level.toUpperCase()}]${reset}`, logEntry);
+
+      console[level === 'debug' ? 'log' : level](
+        `${color}[${level.toUpperCase()}]${reset}`,
+        logEntry
+      );
     } else {
       // In production, send to logging service (e.g., Sentry)
       // For now, only log errors and warnings in production
       if (level === 'error' || level === 'warn') {
-        // eslint-disable-next-line no-console
         console[level](JSON.stringify(logEntry));
       }
     }
@@ -70,4 +71,3 @@ class FrontendLogger {
 }
 
 export const logger = new FrontendLogger();
-

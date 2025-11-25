@@ -347,4 +347,3 @@ export function ArrowPathIcon({ className = 'w-5 h-5', size }: IconProps): JSX.E
     </svg>
   );
 }
-

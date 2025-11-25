@@ -18,7 +18,13 @@ interface PaymentFormProps {
   onError: (message: string) => void;
 }
 
-function UnbanPaymentForm({ paymentIntentId, amount, currency, onSuccess, onError }: PaymentFormProps): JSX.Element {
+function UnbanPaymentForm({
+  paymentIntentId,
+  amount,
+  currency,
+  onSuccess,
+  onError,
+}: PaymentFormProps): JSX.Element {
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,7 +46,8 @@ function UnbanPaymentForm({ paymentIntentId, amount, currency, onSuccess, onErro
       });
 
       if (result.error) {
-        const errorMessage = result.error.message ?? 'No pudimos procesar el pago. Intenta nuevamente.';
+        const errorMessage =
+          result.error.message ?? 'No pudimos procesar el pago. Intenta nuevamente.';
         setMessage(errorMessage);
         onError(errorMessage);
         return;
@@ -56,7 +63,8 @@ function UnbanPaymentForm({ paymentIntentId, amount, currency, onSuccess, onErro
         onError(fallbackMessage);
       }
     } catch (error) {
-      const fallbackMessage = error instanceof Error ? error.message : 'Error inesperado al confirmar el pago.';
+      const fallbackMessage =
+        error instanceof Error ? error.message : 'Error inesperado al confirmar el pago.';
       setMessage(fallbackMessage);
       onError(fallbackMessage);
     } finally {
@@ -67,12 +75,18 @@ function UnbanPaymentForm({ paymentIntentId, amount, currency, onSuccess, onErro
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <p className="text-sm text-gray-600 dark:text-gray-400">
-        Monto a pagar: <span className="font-semibold text-gray-900 dark:text-white">{amount.toFixed(2)}</span>{' '}
+        Monto a pagar:{' '}
+        <span className="font-semibold text-gray-900 dark:text-white">{amount.toFixed(2)}</span>{' '}
         {currency.toUpperCase()}
       </p>
       <PaymentElement />
       {message && <p className="text-sm text-red-500">{message}</p>}
-      <Button type="submit" disabled={isSubmitting || !stripe || !elements} isLoading={isSubmitting} className="w-full">
+      <Button
+        type="submit"
+        disabled={isSubmitting || !stripe || !elements}
+        isLoading={isSubmitting}
+        className="w-full"
+      >
         Confirmar pago
       </Button>
     </form>
@@ -117,7 +131,9 @@ export function BannedPage(): JSX.Element {
       });
     } catch (error) {
       const fallbackMessage =
-        error instanceof Error ? error.message : 'No se pudo iniciar el proceso de pago. Intenta nuevamente.';
+        error instanceof Error
+          ? error.message
+          : 'No se pudo iniciar el proceso de pago. Intenta nuevamente.';
       setErrorMessage(fallbackMessage);
     } finally {
       setIsRequestingPayment(false);
@@ -135,7 +151,9 @@ export function BannedPage(): JSX.Element {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white flex items-center justify-center p-4">
         <div className="max-w-lg w-full bg-white dark:bg-gray-800 rounded-xl shadow-xl p-8 text-center space-y-4">
           <p className="text-lg font-semibold">Tu cuenta no está baneada.</p>
-          <Button onClick={() => (window.location.href = '/login')}>Volver al inicio de sesión</Button>
+          <Button onClick={() => (window.location.href = '/login')}>
+            Volver al inicio de sesión
+          </Button>
         </div>
       </div>
     );
@@ -148,7 +166,10 @@ export function BannedPage(): JSX.Element {
           <div>
             <h1 className="text-3xl font-bold">Tu cuenta ha sido suspendida</h1>
             <p className="text-gray-500 dark:text-gray-400 mt-2">
-              Motivo: <span className="font-semibold text-gray-900 dark:text-white">{details?.reason ?? 'Sin especificar'}</span>
+              Motivo:{' '}
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {details?.reason ?? 'Sin especificar'}
+              </span>
             </p>
             {details?.bannedUntil && (
               <p className="text-gray-500 dark:text-gray-400">
@@ -166,7 +187,8 @@ export function BannedPage(): JSX.Element {
           <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-200 rounded-lg p-4">
             <p className="font-semibold">Inicia sesión para continuar</p>
             <p className="text-sm mt-1">
-              Necesitamos mantener tu sesión activa para generar el pago. Si el error persiste, contáctanos en{' '}
+              Necesitamos mantener tu sesión activa para generar el pago. Si el error persiste,
+              contáctanos en{' '}
               <a href="mailto:soporte@codeqlick.com" className="underline">
                 soporte@codeqlick.com
               </a>
@@ -181,16 +203,21 @@ export function BannedPage(): JSX.Element {
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 space-y-4">
           <h2 className="text-xl font-semibold">Recupera tu cuenta</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Para volver a utilizar la plataforma debes completar el pago de desbaneo. El proceso es completamente seguro
-            y se realiza a través de Stripe.
+            Para volver a utilizar la plataforma debes completar el pago de desbaneo. El proceso es
+            completamente seguro y se realiza a través de Stripe.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button onClick={handleRequestPayment} isLoading={isRequestingPayment} disabled={!isAuthenticated}>
+            <Button
+              onClick={handleRequestPayment}
+              isLoading={isRequestingPayment}
+              disabled={!isAuthenticated}
+            >
               {paymentData ? 'Volver a cargar formulario de pago' : 'Iniciar pago de desbaneo'}
             </Button>
             {email && (
               <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                Cuenta asociada: <span className="ml-1 font-semibold text-gray-900 dark:text-white">{email}</span>
+                Cuenta asociada:{' '}
+                <span className="ml-1 font-semibold text-gray-900 dark:text-white">{email}</span>
               </span>
             )}
           </div>
@@ -220,8 +247,8 @@ export function BannedPage(): JSX.Element {
           !stripePromise && (
             <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl p-6">
               <p className="text-red-700 dark:text-red-200">
-                No podemos mostrar el formulario de pago porque falta la llave pública de Stripe (VITE_STRIPE_PUBLISHABLE_KEY).
-                Contacta al equipo técnico para completar el proceso.
+                No podemos mostrar el formulario de pago porque falta la llave pública de Stripe
+                (VITE_STRIPE_PUBLISHABLE_KEY). Contacta al equipo técnico para completar el proceso.
               </p>
             </div>
           )
@@ -230,4 +257,3 @@ export function BannedPage(): JSX.Element {
     </div>
   );
 }
-

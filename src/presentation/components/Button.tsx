@@ -17,7 +17,7 @@ export function Button({
 }: ButtonProps): JSX.Element {
   const baseClasses =
     'font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
-  
+
   const variantClasses = {
     primary: 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500',
     secondary: 'bg-gray-700 hover:bg-gray-600 text-white focus:ring-gray-500',
@@ -66,4 +66,3 @@ export function Button({
     </button>
   );
 }
-

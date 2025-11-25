@@ -1,6 +1,6 @@
 /**
  * JWT Utilities
- * 
+ *
  * Utilidades para decodificar y validar tokens JWT sin verificar la firma.
  * Útil para leer información como la fecha de expiración.
  */
@@ -103,4 +103,3 @@ export function getMinutesUntilExpiration(token: string): number | null {
 
   return minutesUntilExpiration;
 }
-

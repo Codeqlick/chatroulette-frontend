@@ -3,10 +3,7 @@ import { WEBSOCKET_EVENTS, API_CONSTANTS } from '@config/constants';
 import { webSocketService } from '@infrastructure/websocket/websocket-service';
 import { webrtcService } from '@infrastructure/api/webrtc-service';
 import { logger } from '@infrastructure/logging/frontend-logger';
-import type {
-  ConnectionState,
-  ConnectionQuality,
-} from '../components/ConnectionStatus';
+import type { ConnectionState, ConnectionQuality } from '../components/ConnectionStatus';
 
 export interface MediaDevice {
   deviceId: string;
@@ -25,7 +22,7 @@ function isVirtualCamera(deviceLabel: string): boolean {
   }
 
   const lowerLabel = deviceLabel.toLowerCase();
-  
+
   // Lista de patrones comunes de cámaras virtuales
   const virtualCameraPatterns = [
     'obs virtual',
@@ -119,104 +116,123 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
    * Send offer with retry logic and exponential backoff
    * Includes rate limiting to prevent exceeding server limits (5 offers per minute)
    */
-  const sendOfferWithRetry = useCallback(async (
-    offer: RTCSessionDescriptionInit,
-    attempt: number = 0
-  ): Promise<void> => {
-    if (!sessionId || !peerConnectionRef.current) {
-      throw new Error('Session ID or peer connection not available');
-    }
-
-    if (!webSocketService.isConnected()) {
-      throw new Error('WebSocket not connected');
-    }
-
-    // Rate limiting: Check if enough time has passed since last offer
-    const now = Date.now();
-    const timeSinceLastOffer = now - lastOfferTimeRef.current;
-    
-    if (timeSinceLastOffer < RATE_LIMIT_COOLDOWN_MS && attempt === 0) {
-      const waitTime = RATE_LIMIT_COOLDOWN_MS - timeSinceLastOffer;
-      logger.debug(`Rate limit: waiting ${Math.ceil(waitTime / 1000)}s before sending offer`, { sessionId });
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
-    }
-
-    try {
-      const offerPayload = {
-        sessionId,
-        offer: {
-          type: offer.type,
-          sdp: offer.sdp,
-        },
-      };
-      
-      logger.debug(`Sending offer (attempt ${attempt + 1}/${API_CONSTANTS.WEBRTC_RETRY_MAX_ATTEMPTS})`, { sessionId });
-      webSocketService.emit(WEBSOCKET_EVENTS.VIDEO_OFFER, offerPayload);
-      logger.debug('Offer sent successfully', { sessionId });
-      lastOfferTimeRef.current = Date.now(); // Update last offer time
-      offerRetryAttemptsRef.current = 0; // Reset on success
-    } catch (err) {
-      logger.error(`Error sending offer (attempt ${attempt + 1})`, { error: err, sessionId, attempt });
-      
-      if (attempt < API_CONSTANTS.WEBRTC_RETRY_MAX_ATTEMPTS - 1) {
-        const delay = calculateBackoffDelay(attempt);
-        logger.debug(`Retrying offer in ${delay}ms...`, { sessionId, attempt, delay });
-        offerRetryAttemptsRef.current = attempt + 1;
-        
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        return sendOfferWithRetry(offer, attempt + 1);
-      } else {
-        offerRetryAttemptsRef.current = 0; // Reset after max attempts
-        throw err;
+  const sendOfferWithRetry = useCallback(
+    async (offer: RTCSessionDescriptionInit, attempt: number = 0): Promise<void> => {
+      if (!sessionId || !peerConnectionRef.current) {
+        throw new Error('Session ID or peer connection not available');
       }
-    }
-  }, [sessionId, calculateBackoffDelay]);
+
+      if (!webSocketService.isConnected()) {
+        throw new Error('WebSocket not connected');
+      }
+
+      // Rate limiting: Check if enough time has passed since last offer
+      const now = Date.now();
+      const timeSinceLastOffer = now - lastOfferTimeRef.current;
+
+      if (timeSinceLastOffer < RATE_LIMIT_COOLDOWN_MS && attempt === 0) {
+        const waitTime = RATE_LIMIT_COOLDOWN_MS - timeSinceLastOffer;
+        logger.debug(`Rate limit: waiting ${Math.ceil(waitTime / 1000)}s before sending offer`, {
+          sessionId,
+        });
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+
+      try {
+        const offerPayload = {
+          sessionId,
+          offer: {
+            type: offer.type,
+            sdp: offer.sdp,
+          },
+        };
+
+        logger.debug(
+          `Sending offer (attempt ${attempt + 1}/${API_CONSTANTS.WEBRTC_RETRY_MAX_ATTEMPTS})`,
+          { sessionId }
+        );
+        webSocketService.emit(WEBSOCKET_EVENTS.VIDEO_OFFER, offerPayload);
+        logger.debug('Offer sent successfully', { sessionId });
+        lastOfferTimeRef.current = Date.now(); // Update last offer time
+        offerRetryAttemptsRef.current = 0; // Reset on success
+      } catch (err) {
+        logger.error(`Error sending offer (attempt ${attempt + 1})`, {
+          error: err,
+          sessionId,
+          attempt,
+        });
+
+        if (attempt < API_CONSTANTS.WEBRTC_RETRY_MAX_ATTEMPTS - 1) {
+          const delay = calculateBackoffDelay(attempt);
+          logger.debug(`Retrying offer in ${delay}ms...`, { sessionId, attempt, delay });
+          offerRetryAttemptsRef.current = attempt + 1;
+
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return sendOfferWithRetry(offer, attempt + 1);
+        } else {
+          offerRetryAttemptsRef.current = 0; // Reset after max attempts
+          throw err;
+        }
+      }
+    },
+    [sessionId, calculateBackoffDelay]
+  );
 
   /**
    * Send answer with retry logic and exponential backoff
    */
-  const sendAnswerWithRetry = useCallback(async (
-    answer: RTCSessionDescriptionInit,
-    targetSessionId: string,
-    attempt: number = 0
-  ): Promise<void> => {
-    if (!peerConnectionRef.current) {
-      throw new Error('Peer connection not available');
-    }
-
-    if (!webSocketService.isConnected()) {
-      throw new Error('WebSocket not connected');
-    }
-
-    try {
-      const answerPayload = {
-        sessionId: targetSessionId,
-        answer: {
-          type: answer.type,
-          sdp: answer.sdp,
-        },
-      };
-      
-      logger.debug(`Sending answer (attempt ${attempt + 1}/${API_CONSTANTS.WEBRTC_RETRY_MAX_ATTEMPTS})`, { sessionId: targetSessionId });
-      webSocketService.emit(WEBSOCKET_EVENTS.VIDEO_ANSWER, answerPayload);
-      logger.debug('Answer sent successfully', { sessionId: targetSessionId });
-      answerRetryAttemptsRef.current = 0; // Reset on success
-    } catch (err) {
-      logger.error(`Error sending answer (attempt ${attempt + 1})`, { error: err, sessionId, attempt });
-      
-      if (attempt < API_CONSTANTS.WEBRTC_RETRY_MAX_ATTEMPTS - 1) {
-        const delay = calculateBackoffDelay(attempt);
-        logger.debug(`Retrying answer in ${delay}ms...`, { sessionId, attempt, delay });
-        answerRetryAttemptsRef.current = attempt + 1;
-        
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        return sendAnswerWithRetry(answer, targetSessionId, attempt + 1);
-      } else {
-        answerRetryAttemptsRef.current = 0; // Reset after max attempts
-        throw err;
+  const sendAnswerWithRetry = useCallback(
+    async (
+      answer: RTCSessionDescriptionInit,
+      targetSessionId: string,
+      attempt: number = 0
+    ): Promise<void> => {
+      if (!peerConnectionRef.current) {
+        throw new Error('Peer connection not available');
       }
-    }
-  }, [calculateBackoffDelay]);
+
+      if (!webSocketService.isConnected()) {
+        throw new Error('WebSocket not connected');
+      }
+
+      try {
+        const answerPayload = {
+          sessionId: targetSessionId,
+          answer: {
+            type: answer.type,
+            sdp: answer.sdp,
+          },
+        };
+
+        logger.debug(
+          `Sending answer (attempt ${attempt + 1}/${API_CONSTANTS.WEBRTC_RETRY_MAX_ATTEMPTS})`,
+          { sessionId: targetSessionId }
+        );
+        webSocketService.emit(WEBSOCKET_EVENTS.VIDEO_ANSWER, answerPayload);
+        logger.debug('Answer sent successfully', { sessionId: targetSessionId });
+        answerRetryAttemptsRef.current = 0; // Reset on success
+      } catch (err) {
+        logger.error(`Error sending answer (attempt ${attempt + 1})`, {
+          error: err,
+          sessionId,
+          attempt,
+        });
+
+        if (attempt < API_CONSTANTS.WEBRTC_RETRY_MAX_ATTEMPTS - 1) {
+          const delay = calculateBackoffDelay(attempt);
+          logger.debug(`Retrying answer in ${delay}ms...`, { sessionId, attempt, delay });
+          answerRetryAttemptsRef.current = attempt + 1;
+
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          return sendAnswerWithRetry(answer, targetSessionId, attempt + 1);
+        } else {
+          answerRetryAttemptsRef.current = 0; // Reset after max attempts
+          throw err;
+        }
+      }
+    },
+    [calculateBackoffDelay, sessionId]
+  );
 
   // Load WebRTC configuration from backend
   useEffect(() => {
@@ -230,6 +246,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         logger.error('Error loading configuration, using defaults', { error, sessionId });
         // Keep default STUN servers as fallback
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update localStreamRef when localStream changes
@@ -281,11 +298,14 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
     // Create RTCPeerConnection with optimized configuration from backend
     const configuration: RTCConfiguration = {
-      iceServers: iceServers.length > 0 ? iceServers : [
-        // Fallback si aún no se ha cargado la configuración
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-      ],
+      iceServers:
+        iceServers.length > 0
+          ? iceServers
+          : [
+              // Fallback si aún no se ha cargado la configuración
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' },
+            ],
       // Optimize connection configuration
       bundlePolicy: 'max-bundle', // Reduce number of transports
       rtcpMuxPolicy: 'require', // Require RTCP multiplexing
@@ -307,7 +327,10 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
     // Handle ICE candidates
     peerConnection.onicecandidate = (event) => {
       if (event.candidate && sessionId) {
-        logger.debug('ICE candidate generated', { candidate: event.candidate.candidate, sessionId });
+        logger.debug('ICE candidate generated', {
+          candidate: event.candidate.candidate,
+          sessionId,
+        });
         // Verify socket is connected before emitting
         if (!webSocketService.isConnected()) {
           logger.warn('Socket not connected, cannot send ICE candidate', { sessionId });
@@ -315,13 +338,13 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         }
         try {
           const candidatePayload = {
-          sessionId,
-          candidate: event.candidate.toJSON(),
+            sessionId,
+            candidate: event.candidate.toJSON(),
           };
-          logger.debug('Socket connected, emitting ICE candidate', { 
-            sessionId, 
+          logger.debug('Socket connected, emitting ICE candidate', {
+            sessionId,
             isConnected: webSocketService.isConnected(),
-            eventName: WEBSOCKET_EVENTS.VIDEO_ICE_CANDIDATE 
+            eventName: WEBSOCKET_EVENTS.VIDEO_ICE_CANDIDATE,
           });
           webSocketService.emit(WEBSOCKET_EVENTS.VIDEO_ICE_CANDIDATE, candidatePayload);
           logger.debug('ICE candidate emitted successfully', { sessionId });
@@ -336,19 +359,25 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
     // Reconnection function with exponential backoff
     const attemptReconnection = (): void => {
       if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-        logger.warn('Max reconnection attempts reached', { sessionId, maxAttempts: maxReconnectAttempts });
+        logger.warn('Max reconnection attempts reached', {
+          sessionId,
+          maxAttempts: maxReconnectAttempts,
+        });
         setError(new Error('No se pudo reconectar después de varios intentos'));
         return;
       }
 
       reconnectAttemptsRef.current += 1;
       const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current - 1), 30000); // Max 30s
-      
-      logger.info(`Attempting reconnection ${reconnectAttemptsRef.current}/${maxReconnectAttempts}`, { 
-        sessionId, 
-        delay,
-        attempt: reconnectAttemptsRef.current 
-      });
+
+      logger.info(
+        `Attempting reconnection ${reconnectAttemptsRef.current}/${maxReconnectAttempts}`,
+        {
+          sessionId,
+          delay,
+          attempt: reconnectAttemptsRef.current,
+        }
+      );
 
       reconnectTimeoutRef.current = setTimeout(async () => {
         try {
@@ -367,10 +396,13 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
           // Recreate peer connection with optimized configuration
           const reconnectConfiguration: RTCConfiguration = {
-            iceServers: iceServers.length > 0 ? iceServers : [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' },
-            ],
+            iceServers:
+              iceServers.length > 0
+                ? iceServers
+                : [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                  ],
             // Optimize connection configuration
             bundlePolicy: 'max-bundle', // Reduce number of transports
             rtcpMuxPolicy: 'require', // Require RTCP multiplexing
@@ -401,7 +433,10 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
                   candidate: event.candidate.toJSON(),
                 });
               } catch (err) {
-                logger.error('Error emitting ICE candidate on reconnection', { error: err, sessionId });
+                logger.error('Error emitting ICE candidate on reconnection', {
+                  error: err,
+                  sessionId,
+                });
               }
             }
           };
@@ -431,7 +466,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
     peerConnection.onconnectionstatechange = () => {
       const state = peerConnection.connectionState;
       logger.debug('Connection state changed', { sessionId, state });
-      
+
       // Map WebRTC connection state to our ConnectionState
       switch (state) {
         case 'connecting':
@@ -466,8 +501,10 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
           // Attempt reconnection if we have a session
           if (sessionId && reconnectAttemptsRef.current < maxReconnectAttempts) {
             setTimeout(() => {
-              if (peerConnectionRef.current?.connectionState === 'failed' || 
-                  peerConnectionRef.current?.connectionState === 'closed') {
+              if (
+                peerConnectionRef.current?.connectionState === 'failed' ||
+                peerConnectionRef.current?.connectionState === 'closed'
+              ) {
                 attemptReconnection();
               }
             }, 1000);
@@ -482,7 +519,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
     peerConnection.oniceconnectionstatechange = () => {
       const state = peerConnection.iceConnectionState;
       logger.debug('ICE connection state changed', { sessionId, state });
-      
+
       // Determine connection quality based on ICE connection state
       switch (state) {
         case 'connected':
@@ -524,7 +561,9 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
           setConnectionState('disconnected');
           // Automatically attempt reconnection for disconnected state
           if (sessionId && reconnectAttemptsRef.current < maxReconnectAttempts) {
-            logger.info('Connection disconnected, attempting automatic reconnection', { sessionId });
+            logger.info('Connection disconnected, attempting automatic reconnection', {
+              sessionId,
+            });
             attemptReconnection();
           }
           break;
@@ -538,11 +577,6 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
             attemptReconnection();
           }
           break;
-        case 'connected':
-          // Reset reconnection attempts on successful connection
-          reconnectAttemptsRef.current = 0;
-          setConnectionState('connected');
-          break;
         default:
           setConnectionQuality(null);
       }
@@ -555,7 +589,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         sessionId: string;
         offer: RTCSessionDescriptionInit;
       };
-      
+
       if (!data || !data.sessionId || !data.offer) {
         logger.warn('Invalid offer data received', { sessionId, data });
         return;
@@ -565,7 +599,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         logger.warn('Offer sessionId mismatch', { received: data.sessionId, expected: sessionId });
         return;
       }
-      
+
       if (!peerConnectionRef.current) {
         logger.error('No peer connection available when offer received', { sessionId });
         return;
@@ -581,7 +615,10 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         logger.debug('Current signaling state', { sessionId, signalingState });
 
         if (signalingState === 'have-local-offer') {
-          logger.warn('Already have local offer, ignoring incoming offer to prevent race condition', { sessionId });
+          logger.warn(
+            'Already have local offer, ignoring incoming offer to prevent race condition',
+            { sessionId }
+          );
           return;
         }
 
@@ -608,11 +645,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
             });
           } catch (mediaErr) {
             logger.error('Failed to get user media', { error: mediaErr, sessionId });
-            setError(
-              mediaErr instanceof Error
-                ? mediaErr
-                : new Error('Failed to get user media')
-            );
+            setError(mediaErr instanceof Error ? mediaErr : new Error('Failed to get user media'));
             return;
           }
         } else {
@@ -622,16 +655,20 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
             logger.debug('Adding existing stream tracks to peer connection', { sessionId });
             localStreamRef.current.getTracks().forEach((track) => {
               peerConnection.addTrack(track, localStreamRef.current!);
-              logger.debug('Added existing track', { sessionId, kind: track.kind, trackId: track.id });
+              logger.debug('Added existing track', {
+                sessionId,
+                kind: track.kind,
+                trackId: track.id,
+              });
             });
           }
         }
 
         // Verify signaling state is still stable before setting remote description
         if (peerConnection.signalingState !== 'stable') {
-          logger.warn('Signaling state changed during setup', { 
-            sessionId, 
-            currentState: peerConnection.signalingState 
+          logger.warn('Signaling state changed during setup', {
+            sessionId,
+            currentState: peerConnection.signalingState,
           });
           // If we have a local offer, we should not process this remote offer
           if (peerConnection.signalingState === 'have-local-offer') {
@@ -640,11 +677,9 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
           }
         }
 
-        await peerConnection.setRemoteDescription(
-          new RTCSessionDescription(data.offer)
-        );
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
         logger.debug('Remote description set, creating answer', { sessionId });
-        
+
         // Process any pending ICE candidates now that remote description is set
         await processPendingIceCandidates();
 
@@ -673,7 +708,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         sessionId: string;
         answer: RTCSessionDescriptionInit;
       };
-      
+
       if (!data || !data.sessionId || !data.answer) {
         logger.warn('Invalid answer data received', { sessionId, data });
         return;
@@ -683,7 +718,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         logger.warn('Answer sessionId mismatch', { received: data.sessionId, expected: sessionId });
         return;
       }
-      
+
       if (!peerConnectionRef.current) {
         logger.error('No peer connection available when answer received', { sessionId });
         return;
@@ -696,12 +731,12 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
           clearTimeout(offerTimeoutRef.current);
           offerTimeoutRef.current = null;
         }
-        
+
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(data.answer)
         );
         logger.debug('Remote description set from answer', { sessionId });
-        
+
         // Process any pending ICE candidates now that remote description is set
         await processPendingIceCandidates();
       } catch (err) {
@@ -724,16 +759,16 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         return;
       }
 
-      logger.debug(`Processing ${pendingIceCandidatesRef.current.length} pending ICE candidates`, { sessionId });
-      
+      logger.debug(`Processing ${pendingIceCandidatesRef.current.length} pending ICE candidates`, {
+        sessionId,
+      });
+
       const candidates = [...pendingIceCandidatesRef.current];
       pendingIceCandidatesRef.current = []; // Clear queue
 
       for (const candidate of candidates) {
         try {
-          await peerConnectionRef.current.addIceCandidate(
-            new RTCIceCandidate(candidate)
-          );
+          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
           logger.debug('Pending ICE candidate added successfully', { sessionId });
         } catch (err) {
           logger.error('Error adding pending ICE candidate', { error: err, sessionId });
@@ -749,17 +784,20 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         sessionId: string;
         candidate: RTCIceCandidateInit;
       };
-      
+
       if (!data || !data.sessionId || !data.candidate) {
         logger.warn('Invalid ICE candidate data received', { sessionId, data });
         return;
       }
-      
+
       if (data.sessionId !== sessionId) {
-        logger.warn('ICE candidate sessionId mismatch', { received: data.sessionId, expected: sessionId });
+        logger.warn('ICE candidate sessionId mismatch', {
+          received: data.sessionId,
+          expected: sessionId,
+        });
         return;
       }
-      
+
       if (!peerConnectionRef.current) {
         logger.error('No peer connection available when ICE candidate received', { sessionId });
         return;
@@ -767,7 +805,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
       // Check if remote description is set
       const remoteDescription = peerConnectionRef.current.remoteDescription;
-      
+
       if (!remoteDescription) {
         // Remote description not set yet, queue the candidate
         logger.debug('Remote description not set, queueing ICE candidate', { sessionId });
@@ -777,9 +815,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
       // Remote description is set, add candidate immediately
       try {
-        await peerConnectionRef.current.addIceCandidate(
-          new RTCIceCandidate(data.candidate)
-        );
+        await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
         logger.debug('ICE candidate added successfully', { sessionId });
       } catch (err) {
         logger.error('Error adding ICE candidate', { error: err, sessionId });
@@ -806,10 +842,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
     logger.debug('Registering WebRTC event handlers', { sessionId });
     webSocketService.on(WEBSOCKET_EVENTS.VIDEO_OFFER_RECEIVED, handleOffer);
     webSocketService.on(WEBSOCKET_EVENTS.VIDEO_ANSWER_RECEIVED, handleAnswer);
-    webSocketService.on(
-      WEBSOCKET_EVENTS.VIDEO_ICE_CANDIDATE_RECEIVED,
-      handleIceCandidate
-    );
+    webSocketService.on(WEBSOCKET_EVENTS.VIDEO_ICE_CANDIDATE_RECEIVED, handleIceCandidate);
     webSocketService.on(WEBSOCKET_EVENTS.ROOM_READY, handleRoomReady);
     logger.debug('WebRTC event handlers registered', { sessionId });
 
@@ -828,18 +861,16 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       }
       webSocketService.off(WEBSOCKET_EVENTS.VIDEO_OFFER_RECEIVED, handleOffer);
       webSocketService.off(WEBSOCKET_EVENTS.VIDEO_ANSWER_RECEIVED, handleAnswer);
-      webSocketService.off(
-        WEBSOCKET_EVENTS.VIDEO_ICE_CANDIDATE_RECEIVED,
-        handleIceCandidate
-      );
+      webSocketService.off(WEBSOCKET_EVENTS.VIDEO_ICE_CANDIDATE_RECEIVED, handleIceCandidate);
       webSocketService.off(WEBSOCKET_EVENTS.ROOM_READY, handleRoomReady);
-      
+
       // Clear any pending timeouts
       if (offerTimeoutRef.current) {
         clearTimeout(offerTimeoutRef.current);
         offerTimeoutRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   const startLocalVideo = useCallback(async (): Promise<void> => {
@@ -858,12 +889,8 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: selectedVideoDeviceId
-          ? { deviceId: { exact: selectedVideoDeviceId } }
-          : true,
-        audio: selectedAudioDeviceId
-          ? { deviceId: { exact: selectedAudioDeviceId } }
-          : true,
+        video: selectedVideoDeviceId ? { deviceId: { exact: selectedVideoDeviceId } } : true,
+        audio: selectedAudioDeviceId ? { deviceId: { exact: selectedAudioDeviceId } } : true,
       });
 
       setLocalStream(stream);
@@ -922,9 +949,9 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
       // If signaling is not stable, something is in progress
       if (signalingState !== 'stable') {
-        logger.warn('Signaling state is not stable, waiting for negotiation to complete', { 
-          sessionId, 
-          signalingState 
+        logger.warn('Signaling state is not stable, waiting for negotiation to complete', {
+          sessionId,
+          signalingState,
         });
         isStartingVideoRef.current = false;
         return;
@@ -936,12 +963,8 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: selectedVideoDeviceId
-          ? { deviceId: { exact: selectedVideoDeviceId } }
-          : true,
-        audio: selectedAudioDeviceId
-          ? { deviceId: { exact: selectedAudioDeviceId } }
-          : true,
+        video: selectedVideoDeviceId ? { deviceId: { exact: selectedVideoDeviceId } } : true,
+        audio: selectedAudioDeviceId ? { deviceId: { exact: selectedAudioDeviceId } } : true,
       });
 
       setLocalStream(stream);
@@ -949,7 +972,11 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       // Add tracks to peer connection
       stream.getTracks().forEach((track) => {
         peerConnection.addTrack(track, stream);
-        logger.debug('Added track to peer connection', { sessionId, kind: track.kind, trackId: track.id });
+        logger.debug('Added track to peer connection', {
+          sessionId,
+          kind: track.kind,
+          trackId: track.id,
+        });
       });
 
       // Verify tracks were added
@@ -963,19 +990,21 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       // This ensures both users are in the room
       let waitAttempts = 0;
       const maxWaitAttempts = 20; // 10 seconds max wait (20 * 500ms)
-      
+
       while (!roomReady && waitAttempts < maxWaitAttempts) {
-        logger.debug(`Waiting for room ready`, { 
-          sessionId, 
-          attempt: waitAttempts + 1, 
-          maxAttempts: maxWaitAttempts 
+        logger.debug(`Waiting for room ready`, {
+          sessionId,
+          attempt: waitAttempts + 1,
+          maxAttempts: maxWaitAttempts,
         });
-      await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         waitAttempts++;
       }
 
       if (!roomReady) {
-        logger.warn('Room ready timeout, proceeding anyway (partner may still be connecting)', { sessionId });
+        logger.warn('Room ready timeout, proceeding anyway (partner may still be connecting)', {
+          sessionId,
+        });
       } else {
         logger.debug('Room is ready, proceeding with offer creation', { sessionId });
       }
@@ -983,7 +1012,10 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       // Random delay to prevent both users from creating offers simultaneously
       // This helps avoid race conditions where both users try to be the offerer
       const randomDelay = 500 + Math.random() * 1000; // 500-1500ms
-      logger.debug(`Waiting ${Math.round(randomDelay)}ms before creating offer to avoid race condition`, { sessionId, delay: Math.round(randomDelay) });
+      logger.debug(
+        `Waiting ${Math.round(randomDelay)}ms before creating offer to avoid race condition`,
+        { sessionId, delay: Math.round(randomDelay) }
+      );
       await new Promise((resolve) => setTimeout(resolve, randomDelay));
 
       // Verify socket is connected before sending offer
@@ -997,9 +1029,9 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       // Double-check signaling state before creating offer (may have changed during delay)
       const currentSignalingState = peerConnection.signalingState;
       if (currentSignalingState !== 'stable') {
-        logger.warn('Signaling state changed during delay, skipping offer creation', { 
-          sessionId, 
-          currentState: currentSignalingState 
+        logger.warn('Signaling state changed during delay, skipping offer creation', {
+          sessionId,
+          currentState: currentSignalingState,
         });
         isStartingVideoRef.current = false;
         return;
@@ -1013,21 +1045,23 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
       const offerDescription = peerConnection.localDescription;
       if (offerDescription) {
-        logger.debug('Sending offer', { 
-          sessionId, 
+        logger.debug('Sending offer', {
+          sessionId,
           isConnected: webSocketService.isConnected(),
           eventName: WEBSOCKET_EVENTS.VIDEO_OFFER,
           offerType: offerDescription.type,
-          sdpLength: offerDescription.sdp?.length || 0
+          sdpLength: offerDescription.sdp?.length || 0,
         });
-        
+
         try {
           await sendOfferWithRetry(offerDescription);
-          
+
           // Set timeout to retry if no answer received (using exponential backoff)
           offerTimeoutRef.current = setTimeout(() => {
             if (peerConnectionRef.current?.signalingState === 'have-local-offer') {
-              logger.warn('No answer received after 10 seconds, connection may have failed', { sessionId });
+              logger.warn('No answer received after 10 seconds, connection may have failed', {
+                sessionId,
+              });
               // Check if we should retry
               if (reconnectAttemptsRef.current < maxReconnectAttempts) {
                 logger.info('Retrying offer after timeout', { sessionId });
@@ -1035,17 +1069,22 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
                 if (peerConnectionRef.current) {
                   try {
                     // Create a new offer to retry
-                    peerConnectionRef.current.createOffer().then(async (newOffer) => {
-                      await peerConnectionRef.current!.setLocalDescription(newOffer);
-                      if (peerConnectionRef.current?.localDescription) {
-                        // Use retry logic for the retry attempt
-                        sendOfferWithRetry(peerConnectionRef.current.localDescription).catch((err) => {
-                          logger.error('Error retrying offer', { error: err, sessionId });
-                        });
-                      }
-                    }).catch((err) => {
-                      logger.error('Error creating retry offer', { error: err, sessionId });
-                    });
+                    peerConnectionRef.current
+                      .createOffer()
+                      .then(async (newOffer) => {
+                        await peerConnectionRef.current!.setLocalDescription(newOffer);
+                        if (peerConnectionRef.current?.localDescription) {
+                          // Use retry logic for the retry attempt
+                          sendOfferWithRetry(peerConnectionRef.current.localDescription).catch(
+                            (err) => {
+                              logger.error('Error retrying offer', { error: err, sessionId });
+                            }
+                          );
+                        }
+                      })
+                      .catch((err) => {
+                        logger.error('Error creating retry offer', { error: err, sessionId });
+                      });
                   } catch (err) {
                     logger.error('Error retrying offer', { error: err, sessionId });
                   }
@@ -1067,6 +1106,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
     } finally {
       isStartingVideoRef.current = false;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, localStream, roomReady, selectedVideoDeviceId, selectedAudioDeviceId]);
 
   // Store startVideo in ref for reconnection
@@ -1111,16 +1151,14 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const mediaDevices: MediaDevice[] = devices
-        .filter(
-          (device) =>
-            device.kind === 'videoinput' || device.kind === 'audioinput'
-        )
+        .filter((device) => device.kind === 'videoinput' || device.kind === 'audioinput')
         .map((device) => ({
           deviceId: device.deviceId,
-          label: device.label || `Dispositivo ${device.kind === 'videoinput' ? 'de video' : 'de audio'}`,
+          label:
+            device.label || `Dispositivo ${device.kind === 'videoinput' ? 'de video' : 'de audio'}`,
           kind: device.kind as 'videoinput' | 'audioinput',
         }));
-      
+
       setAvailableDevices(mediaDevices);
 
       // Separate physical and virtual cameras
@@ -1140,26 +1178,30 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       // Prioritize physical cameras over virtual ones
       if (!selectedVideoDeviceId) {
         let defaultVideo: MediaDevice | undefined;
-        
+
         // First, try to find a physical camera
         if (physicalCameras.length > 0) {
           defaultVideo = physicalCameras[0];
           if (defaultVideo) {
-          logger.debug('Selected physical camera as default', { label: defaultVideo.label });
+            logger.debug('Selected physical camera as default', { label: defaultVideo.label });
           }
-        } 
+        }
         // If no physical cameras, fall back to virtual cameras
         else if (virtualCameras.length > 0) {
           defaultVideo = virtualCameras[0];
           if (defaultVideo) {
-          logger.debug('No physical cameras found, selected virtual camera as default', { label: defaultVideo.label });
+            logger.debug('No physical cameras found, selected virtual camera as default', {
+              label: defaultVideo.label,
+            });
           }
         }
         // If no cameras at all, use the first video device found
         else if (videoDevices.length > 0) {
           defaultVideo = videoDevices[0];
           if (defaultVideo) {
-          logger.debug('Selected first available video device as default', { label: defaultVideo.label });
+            logger.debug('Selected first available video device as default', {
+              label: defaultVideo.label,
+            });
           }
         }
 
@@ -1193,9 +1235,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
           const newStream = await navigator.mediaDevices.getUserMedia({
             video: { deviceId: { exact: deviceId } },
-            audio: selectedAudioDeviceId
-              ? { deviceId: { exact: selectedAudioDeviceId } }
-              : true,
+            audio: selectedAudioDeviceId ? { deviceId: { exact: selectedAudioDeviceId } } : true,
           });
 
           const newVideoTrack = newStream.getVideoTracks()[0];
@@ -1222,11 +1262,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
           }
         } catch (err) {
           logger.error('Error changing video device', { error: err, deviceId });
-          setError(
-            err instanceof Error
-              ? err
-              : new Error('Failed to change video device')
-          );
+          setError(err instanceof Error ? err : new Error('Failed to change video device'));
         }
       }
     },
@@ -1244,9 +1280,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
           }
 
           const newStream = await navigator.mediaDevices.getUserMedia({
-            video: selectedVideoDeviceId
-              ? { deviceId: { exact: selectedVideoDeviceId } }
-              : true,
+            video: selectedVideoDeviceId ? { deviceId: { exact: selectedVideoDeviceId } } : true,
             audio: { deviceId: { exact: deviceId } },
           });
 
@@ -1274,11 +1308,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
           }
         } catch (err) {
           logger.error('Error changing audio device', { error: err, deviceId });
-          setError(
-            err instanceof Error
-              ? err
-              : new Error('Failed to change audio device')
-          );
+          setError(err instanceof Error ? err : new Error('Failed to change audio device'));
         }
       }
     },
@@ -1315,4 +1345,3 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
     error,
   };
 }
-

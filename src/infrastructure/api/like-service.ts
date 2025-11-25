@@ -28,7 +28,11 @@ export interface SessionLikesResponse {
 }
 
 export class LikeService {
-  async likeUser(sessionId: string, likedUserId?: string, likedUsername?: string): Promise<CreateLikeResponse> {
+  async likeUser(
+    sessionId: string,
+    likedUserId?: string,
+    likedUsername?: string
+  ): Promise<CreateLikeResponse> {
     const body: CreateLikeRequest = {};
     if (likedUserId) {
       body.likedUserId = likedUserId;
@@ -64,4 +68,3 @@ export class LikeService {
 }
 
 export const likeService = new LikeService();
-

@@ -34,4 +34,3 @@ export const useBanStore = create<BanState>((set) => ({
     });
   },
 }));
-

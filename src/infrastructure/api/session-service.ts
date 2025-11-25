@@ -28,9 +28,7 @@ export interface SessionMessagesResponse {
 
 export class SessionService {
   async getSessionDetails(sessionId: string): Promise<SessionDetailsResponse> {
-    const response = await apiClient.instance.get<SessionDetailsResponse>(
-      `/sessions/${sessionId}`
-    );
+    const response = await apiClient.instance.get<SessionDetailsResponse>(`/sessions/${sessionId}`);
     return response.data;
   }
 
@@ -67,20 +65,16 @@ export class SessionService {
       // Extract error message from Axios response
       if (error instanceof AxiosError) {
         const errorMessage =
-          (error.response?.data as { error?: { message?: string } })?.error
-            ?.message ||
+          (error.response?.data as { error?: { message?: string } })?.error?.message ||
           error.message ||
           'Error al terminar sesión';
         throw new Error(errorMessage);
       }
 
       // Re-throw if not an AxiosError
-      throw error instanceof Error
-        ? error
-        : new Error('Error al terminar sesión');
+      throw error instanceof Error ? error : new Error('Error al terminar sesión');
     }
   }
 }
 
 export const sessionService = new SessionService();
-

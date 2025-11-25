@@ -33,12 +33,9 @@ export class BlockService {
   }
 
   async getBlockedUsers(): Promise<GetBlockedUsersResponse> {
-    const response = await apiClient.instance.get<GetBlockedUsersResponse>(
-      '/users/me/blocked'
-    );
+    const response = await apiClient.instance.get<GetBlockedUsersResponse>('/users/me/blocked');
     return response.data;
   }
 }
 
 export const blockService = new BlockService();
-

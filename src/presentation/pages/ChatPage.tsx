@@ -90,9 +90,7 @@ export function ChatPage(): JSX.Element {
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
         <div className="text-center">
           <p className="text-xl mb-4">Cargando sesión...</p>
-          {error && (
-            <p className="text-red-500 mt-4">{error}</p>
-          )}
+          {error && <p className="text-red-500 mt-4">{error}</p>}
         </div>
       </div>
     );
@@ -102,9 +100,7 @@ export function ChatPage(): JSX.Element {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
         <div className="text-center">
-          <p className="text-xl mb-4 text-red-500">
-            {error || 'No se pudo cargar la sesión'}
-          </p>
+          <p className="text-xl mb-4 text-red-500">{error || 'No se pudo cargar la sesión'}</p>
           <button
             onClick={() => navigate('/videochat')}
             className="mt-4 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
@@ -118,4 +114,3 @@ export function ChatPage(): JSX.Element {
 
   return <ChatWindow sessionId={sessionId} partner={partner} />;
 }
-

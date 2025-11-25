@@ -9,7 +9,10 @@ interface ChatState {
   isLoadingMessages: boolean;
   addMessage: (message: ChatMessage) => void;
   updateMessage: (messageId: string, updates: Partial<ChatMessage>) => void;
-  setSession: (sessionId: string, partner: { username: string; name: string; avatar: string | null }) => void;
+  setSession: (
+    sessionId: string,
+    partner: { username: string; name: string; avatar: string | null }
+  ) => void;
   clearSession: () => void;
   setTyping: (isTyping: boolean) => void;
   loadMessages: (messages: ChatMessage[]) => void;
@@ -28,9 +31,7 @@ export const useChatStore = create<ChatState>((set) => ({
     })),
   updateMessage: (messageId, updates) =>
     set((state) => ({
-      messages: state.messages.map((msg) =>
-        msg.id === messageId ? { ...msg, ...updates } : msg
-      ),
+      messages: state.messages.map((msg) => (msg.id === messageId ? { ...msg, ...updates } : msg)),
     })),
   setSession: (sessionId, partner) =>
     set({
@@ -55,4 +56,3 @@ export const useChatStore = create<ChatState>((set) => ({
     }),
   setLoadingMessages: (loading) => set({ isLoadingMessages: loading }),
 }));
-

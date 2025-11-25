@@ -15,9 +15,7 @@ export interface MatchingStatusResponse {
 
 export class MatchingService {
   async start(): Promise<StartMatchingResponse> {
-    const response = await apiClient.instance.post<StartMatchingResponse>(
-      '/matching/start'
-    );
+    const response = await apiClient.instance.post<StartMatchingResponse>('/matching/start');
     return response.data;
   }
 
@@ -26,12 +24,9 @@ export class MatchingService {
   }
 
   async getStatus(): Promise<MatchingStatusResponse> {
-    const response = await apiClient.instance.get<MatchingStatusResponse>(
-      '/matching/status'
-    );
+    const response = await apiClient.instance.get<MatchingStatusResponse>('/matching/status');
     return response.data;
   }
 }
 
 export const matchingService = new MatchingService();
-

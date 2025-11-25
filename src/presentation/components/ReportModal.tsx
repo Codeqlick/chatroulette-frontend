@@ -72,9 +72,25 @@ export function ReportModal({
       // Reset form
       setCategory('');
       setDescription('');
-    } catch (err: any) {
-      if (err?.response?.data?.error?.message) {
-        setError(err.response.data.error.message);
+    } catch (err: unknown) {
+      if (
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        err.response &&
+        typeof err.response === 'object' &&
+        'data' in err.response &&
+        err.response.data &&
+        typeof err.response.data === 'object' &&
+        'error' in err.response.data &&
+        err.response.data.error &&
+        typeof err.response.data.error === 'object' &&
+        'message' in err.response.data.error
+      ) {
+        const errorResponse = err.response as {
+          data: { error: { message: string } };
+        };
+        setError(errorResponse.data.error.message);
       } else if (err instanceof Error) {
         setError(err.message || 'Error al enviar el reporte');
       } else {
@@ -98,9 +114,7 @@ export function ReportModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Categoría
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Categoría</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as ReportCategory)}
@@ -128,9 +142,7 @@ export function ReportModal({
               className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
               placeholder="Describe el problema..."
             />
-            <p className="text-xs text-gray-400 mt-1">
-              {description.length}/500 caracteres
-            </p>
+            <p className="text-xs text-gray-400 mt-1">{description.length}/500 caracteres</p>
           </div>
 
           <div className="flex gap-3 pt-4">
@@ -151,4 +163,3 @@ export function ReportModal({
     </div>
   );
 }
-

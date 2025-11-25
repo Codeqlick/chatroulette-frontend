@@ -6,7 +6,11 @@ interface SearchingOverlayProps {
   showCancelButton?: boolean;
 }
 
-export function SearchingOverlay({ isSearching, onCancel, showCancelButton = true }: SearchingOverlayProps): JSX.Element | null {
+export function SearchingOverlay({
+  isSearching,
+  onCancel,
+  showCancelButton = true,
+}: SearchingOverlayProps): JSX.Element | null {
   if (!isSearching) {
     return null;
   }
@@ -24,9 +28,7 @@ export function SearchingOverlay({ isSearching, onCancel, showCancelButton = tru
 
         {/* Text */}
         <div className="space-y-2">
-          <h2 className="text-2xl md:text-3xl font-bold text-white">
-            Buscando compañero...
-          </h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-white">Buscando compañero...</h2>
           <p className="text-white/80 text-sm md:text-base">
             Estamos buscando alguien con quien puedas chatear
           </p>
@@ -49,4 +51,3 @@ export function SearchingOverlay({ isSearching, onCancel, showCancelButton = tru
     </div>
   );
 }
-

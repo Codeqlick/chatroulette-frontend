@@ -47,17 +47,17 @@ export function VideochatPage(): JSX.Element {
     if (!hasHydrated || isInitializing) {
       return false;
     }
-    
+
     // Must be authenticated with token
     if (!isAuthenticated || !accessToken) {
       return false;
     }
-    
+
     // If we've checked status or initialized, we're ready
     if (hasCheckedStatus || isInitialized) {
       return true;
     }
-    
+
     return false;
   }, [hasHydrated, isInitializing, isAuthenticated, accessToken, hasCheckedStatus, isInitialized]);
 
@@ -80,7 +80,7 @@ export function VideochatPage(): JSX.Element {
       // Matching worker will emit match:found event when match is found
     } catch (err) {
       setIsSearching(false);
-      
+
       // Check if error is due to active session (409 Conflict)
       if (err instanceof AxiosError && err.response?.status === 409) {
         // User has active session, check status and load it
@@ -93,19 +93,22 @@ export function VideochatPage(): JSX.Element {
               setSession(details.sessionId, details.partner);
               setIsLoadingSession(false);
             } catch (sessionErr) {
-              logger.error('Error loading session details', { error: sessionErr, sessionId: status.sessionId });
+              logger.error('Error loading session details', {
+                error: sessionErr,
+                sessionId: status.sessionId,
+              });
               setIsLoadingSession(false);
               setError('Error al cargar la sesión activa.');
             }
             return;
           }
           setError('Ya tienes una sesión activa o estás en la cola de búsqueda.');
-        } catch (statusErr) {
+        } catch {
           setError('Ya tienes una sesión activa. Por favor, termina la sesión actual primero.');
         }
         return;
       }
-      
+
       setError('Error al iniciar búsqueda. Intenta nuevamente.');
     }
   }, [setSession]);
@@ -133,7 +136,6 @@ export function VideochatPage(): JSX.Element {
       });
     }
   }, [isReady, sessionId, localStream, startLocalVideo]);
-
 
   // Update WebSocket when accessToken changes (only after initialization is complete)
   useEffect(() => {
@@ -169,7 +171,9 @@ export function VideochatPage(): JSX.Element {
     // But don't block initialization, just log a warning
     let retryTimer: NodeJS.Timeout | undefined;
     if (!user && accessToken) {
-      logger.warn('User is null but accessToken exists, this might indicate a state hydration issue');
+      logger.warn(
+        'User is null but accessToken exists, this might indicate a state hydration issue'
+      );
       // Give it a moment and check again, but don't block
       retryTimer = setTimeout(() => {
         if (!user) {
@@ -193,20 +197,20 @@ export function VideochatPage(): JSX.Element {
     // Connect WebSocket first, then check status
     const initializeConnection = async (): Promise<void> => {
       try {
-    // Connect WebSocket
+        // Connect WebSocket
         await webSocketService.connect(accessToken);
         logger.debug('WebSocket connected successfully');
-        
+
         // Wait a bit for WebSocket to be fully ready
         await new Promise((resolve) => setTimeout(resolve, 500));
-        
+
         // Check for active session or matching status
         await checkStatus();
       } catch (err) {
-      logger.error('Error connecting WebSocket', { error: err });
-      setInitializationError('Error al conectar con el servidor. Por favor, recarga la página.');
-      setHasCheckedStatus(true);
-      clearTimeout(safetyTimeout);
+        logger.error('Error connecting WebSocket', { error: err });
+        setInitializationError('Error al conectar con el servidor. Por favor, recarga la página.');
+        setHasCheckedStatus(true);
+        clearTimeout(safetyTimeout);
       }
     };
 
@@ -216,7 +220,7 @@ export function VideochatPage(): JSX.Element {
         logger.debug('Checking matching status');
         const status = await matchingService.getStatus();
         logger.debug('Matching status', { status });
-        
+
         if (status.status === 'matched' && status.sessionId) {
           // User has an active session, load it
           const activeSessionId = status.sessionId; // Store in const to avoid undefined
@@ -229,7 +233,7 @@ export function VideochatPage(): JSX.Element {
             setIsInitialized(true);
             clearTimeout(safetyTimeout);
             logger.debug('Session loaded successfully', { sessionId: activeSessionId });
-            
+
             // Join the session room in WebSocket
             // Wait a bit to ensure WebSocket is fully connected
             setTimeout(() => {
@@ -238,15 +242,23 @@ export function VideochatPage(): JSX.Element {
                   webSocketService.joinRoom(activeSessionId);
                   logger.debug('Joined session room in WebSocket', { sessionId: activeSessionId });
                 } else {
-                  logger.warn('WebSocket not connected, cannot join room', { sessionId: activeSessionId });
+                  logger.warn('WebSocket not connected, cannot join room', {
+                    sessionId: activeSessionId,
+                  });
                 }
               } catch (wsErr) {
-                logger.warn('Error joining session room', { error: wsErr, sessionId: activeSessionId });
+                logger.warn('Error joining session room', {
+                  error: wsErr,
+                  sessionId: activeSessionId,
+                });
                 // Continue even if joining room fails
               }
             }, 1000);
           } catch (err) {
-            logger.error('Error loading session details', { error: err, sessionId: activeSessionId });
+            logger.error('Error loading session details', {
+              error: err,
+              sessionId: activeSessionId,
+            });
             setIsLoadingSession(false);
             clearSession();
             setHasCheckedStatus(true);
@@ -254,7 +266,7 @@ export function VideochatPage(): JSX.Element {
             clearTimeout(safetyTimeout);
             // Don't set error, just continue to matching
             if (autoSearch) {
-            await startMatching();
+              await startMatching();
             }
           }
           return;
@@ -287,7 +299,7 @@ export function VideochatPage(): JSX.Element {
         try {
           logger.info('Attempting to start matching after error');
           if (autoSearch) {
-        await startMatching();
+            await startMatching();
           }
         } catch (matchingErr) {
           logger.error('Error starting matching', { error: matchingErr });
@@ -316,15 +328,15 @@ export function VideochatPage(): JSX.Element {
     };
 
     const handleMatchTimeout = (...args: unknown[]): void => {
-      const data = args[0] as {
-        reason: string;
-        message: string;
-      } | undefined;
-      
+      const data = args[0] as
+        | {
+            reason: string;
+            message: string;
+          }
+        | undefined;
+
       setIsSearching(false);
-      setError(
-        data?.message ?? 'No se encontró ningún usuario disponible. Intenta nuevamente.'
-      );
+      setError(data?.message ?? 'No se encontró ningún usuario disponible. Intenta nuevamente.');
     };
 
     // Listen for session ended
@@ -355,7 +367,19 @@ export function VideochatPage(): JSX.Element {
       webSocketService.off(WEBSOCKET_EVENTS.MATCH_TIMEOUT, handleMatchTimeout);
       webSocketService.off(WEBSOCKET_EVENTS.SESSION_ENDED, handleSessionEnded);
     };
-  }, [isAuthenticated, accessToken, navigate, setSession, clearSession, sessionId, startMatching, isInitializing, autoSearch]);
+  }, [
+    isAuthenticated,
+    accessToken,
+    navigate,
+    setSession,
+    clearSession,
+    sessionId,
+    startMatching,
+    isInitializing,
+    autoSearch,
+    hasCheckedStatus,
+    user,
+  ]);
 
   // Debug logging
   logger.debug('Render state', {
@@ -410,22 +434,12 @@ export function VideochatPage(): JSX.Element {
           <h2 className="text-2xl md:text-3xl font-bold mb-4 text-red-500">
             Error de Inicialización
           </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">
-            {initializationError}
-          </p>
+          <p className="text-gray-600 dark:text-gray-400 mb-8">{initializationError}</p>
           <div className="flex gap-4 justify-center">
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => window.location.reload()}
-            >
+            <Button variant="primary" size="lg" onClick={() => window.location.reload()}>
               Recargar Página
             </Button>
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={logout}
-            >
+            <Button variant="secondary" size="lg" onClick={logout}>
               Cerrar Sesión
             </Button>
           </div>
@@ -437,7 +451,9 @@ export function VideochatPage(): JSX.Element {
   // If there's an active session, show ChatWindow with smooth transition
   if (sessionId && partner) {
     return (
-      <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white transition-colors ${isTransitioning ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}>
+      <div
+        className={`min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white transition-colors ${isTransitioning ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+      >
         <ChatWindow sessionId={sessionId} partner={partner} />
       </div>
     );
@@ -490,7 +506,9 @@ export function VideochatPage(): JSX.Element {
       </div>
 
       {/* Searching Overlay with smooth transition */}
-      <div className={`transition-opacity duration-300 ${isSearching && !isTransitioning ? 'opacity-100' : 'opacity-0'}`}>
+      <div
+        className={`transition-opacity duration-300 ${isSearching && !isTransitioning ? 'opacity-100' : 'opacity-0'}`}
+      >
         <SearchingOverlay
           isSearching={isSearching && !isTransitioning}
           onCancel={handleCancelSearch}
@@ -510,8 +528,8 @@ export function VideochatPage(): JSX.Element {
         </button>
         {/* App Header - User menu */}
         <div className="relative">
-          <AppHeader 
-            className="bg-black/50 backdrop-blur-sm border-white/20 rounded-lg shadow-lg border-0 shadow-none" 
+          <AppHeader
+            className="bg-black/50 backdrop-blur-sm border-white/20 rounded-lg shadow-lg border-0 shadow-none"
             showLogo={false}
           />
         </div>
@@ -581,4 +599,3 @@ export function VideochatPage(): JSX.Element {
     </div>
   );
 }
-

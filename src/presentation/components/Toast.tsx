@@ -7,7 +7,12 @@ interface ToastProps {
   onClose: () => void;
 }
 
-export function Toast({ message, type = 'info', duration = 5000, onClose }: ToastProps): JSX.Element {
+export function Toast({
+  message,
+  type = 'info',
+  duration = 5000,
+  onClose,
+}: ToastProps): JSX.Element {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
@@ -99,4 +104,3 @@ export function ToastContainer({ toasts, onRemove }: ToastContainerProps): JSX.E
     </div>
   );
 }
-

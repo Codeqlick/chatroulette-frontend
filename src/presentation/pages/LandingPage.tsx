@@ -34,7 +34,8 @@ export function LandingPage(): JSX.Element {
             Conecta con personas de todo el mundo
           </h2>
           <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-400 mb-8 max-w-3xl mx-auto">
-            Video chat aleatorio con matching inteligente. Encuentra nuevas amistades y conversaciones interesantes.
+            Video chat aleatorio con matching inteligente. Encuentra nuevas amistades y
+            conversaciones interesantes.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/register">
@@ -65,14 +66,20 @@ export function LandingPage(): JSX.Element {
                 Conecta instantáneamente con video de alta calidad usando tecnología WebRTC.
               </p>
             </div>
-            <div className="text-center p-6 rounded-lg bg-gray-50 dark:bg-gray-900 transition-colors animate-scale-in-delayed" style={{ animationDelay: '0.1s' }}>
+            <div
+              className="text-center p-6 rounded-lg bg-gray-50 dark:bg-gray-900 transition-colors animate-scale-in-delayed"
+              style={{ animationDelay: '0.1s' }}
+            >
               <div className="text-4xl mb-4">🎯</div>
               <h4 className="text-xl font-bold mb-2">Matching Inteligente</h4>
               <p className="text-gray-600 dark:text-gray-400">
                 Algoritmo avanzado que conecta usuarios con intereses similares.
               </p>
             </div>
-            <div className="text-center p-6 rounded-lg bg-gray-50 dark:bg-gray-900 transition-colors animate-scale-in-delayed" style={{ animationDelay: '0.2s' }}>
+            <div
+              className="text-center p-6 rounded-lg bg-gray-50 dark:bg-gray-900 transition-colors animate-scale-in-delayed"
+              style={{ animationDelay: '0.2s' }}
+            >
               <div className="text-4xl mb-4">🔒</div>
               <h4 className="text-xl font-bold mb-2">Seguro y Privado</h4>
               <p className="text-gray-600 dark:text-gray-400">
@@ -86,9 +93,7 @@ export function LandingPage(): JSX.Element {
       {/* How It Works Section */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h3 className="text-3xl md:text-4xl font-bold text-center mb-12">
-            ¿Cómo Funciona?
-          </h3>
+          <h3 className="text-3xl md:text-4xl font-bold text-center mb-12">¿Cómo Funciona?</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="w-16 h-16 bg-primary-600 rounded-full flex items-center justify-center text-2xl font-bold text-white mx-auto mb-4">
@@ -124,9 +129,7 @@ export function LandingPage(): JSX.Element {
       {/* CTA Section */}
       <section className="bg-primary-600 py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            ¿Listo para comenzar?
-          </h3>
+          <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">¿Listo para comenzar?</h3>
           <p className="text-xl text-primary-100 mb-8">
             Únete a nuestra comunidad y descubre nuevas conexiones hoy mismo.
           </p>
@@ -146,10 +149,16 @@ export function LandingPage(): JSX.Element {
               © 2024 ChatRoulette. Todos los derechos reservados.
             </p>
             <div className="flex gap-6 mt-4 md:mt-0">
-              <Link to="/login" className="text-gray-600 dark:text-gray-400 hover:text-primary-500 text-sm transition-colors">
+              <Link
+                to="/login"
+                className="text-gray-600 dark:text-gray-400 hover:text-primary-500 text-sm transition-colors"
+              >
                 Iniciar Sesión
               </Link>
-              <Link to="/register" className="text-gray-600 dark:text-gray-400 hover:text-primary-500 text-sm transition-colors">
+              <Link
+                to="/register"
+                className="text-gray-600 dark:text-gray-400 hover:text-primary-500 text-sm transition-colors"
+              >
                 Registrarse
               </Link>
             </div>
@@ -159,4 +168,3 @@ export function LandingPage(): JSX.Element {
     </div>
   );
 }
-

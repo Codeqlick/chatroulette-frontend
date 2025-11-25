@@ -10,6 +10,7 @@ export function StatsCharts(): JSX.Element {
 
   useEffect(() => {
     loadStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
 
   const loadStats = async (): Promise<void> => {
@@ -60,7 +61,9 @@ export function StatsCharts(): JSX.Element {
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <ChartBarIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Período:</label>
+            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Período:
+            </label>
           </div>
           <select
             value={period}
@@ -73,7 +76,8 @@ export function StatsCharts(): JSX.Element {
           </select>
           <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
             <ClockIcon className="w-4 h-4" />
-            {new Date(stats.startDate).toLocaleDateString()} - {new Date(stats.endDate).toLocaleDateString()}
+            {new Date(stats.startDate).toLocaleDateString()} -{' '}
+            {new Date(stats.endDate).toLocaleDateString()}
           </span>
         </div>
       </div>
@@ -112,7 +116,10 @@ export function StatsCharts(): JSX.Element {
                       )}
                     </div>
                     <span className="text-xs text-gray-600 dark:text-gray-400 mt-2 truncate w-full text-center font-medium">
-                      {new Date(item.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                      {new Date(item.date).toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: '2-digit',
+                      })}
                     </span>
                   </div>
                 ))
@@ -141,7 +148,10 @@ export function StatsCharts(): JSX.Element {
                       title={`${item.date}: ${item.count}`}
                     ></div>
                     <span className="text-xs text-gray-600 dark:text-gray-400 mt-2 truncate w-full text-center font-medium">
-                      {new Date(item.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                      {new Date(item.date).toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: '2-digit',
+                      })}
                     </span>
                   </div>
                 ))
@@ -170,7 +180,10 @@ export function StatsCharts(): JSX.Element {
                       title={`${item.date}: ${item.count}`}
                     ></div>
                     <span className="text-xs text-gray-600 dark:text-gray-400 mt-2 truncate w-full text-center font-medium">
-                      {new Date(item.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                      {new Date(item.date).toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: '2-digit',
+                      })}
                     </span>
                   </div>
                 ))
@@ -199,7 +212,10 @@ export function StatsCharts(): JSX.Element {
                       title={`${item.date}: ${item.count}`}
                     ></div>
                     <span className="text-xs text-gray-600 dark:text-gray-400 mt-2 truncate w-full text-center font-medium">
-                      {new Date(item.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                      {new Date(item.date).toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: '2-digit',
+                      })}
                     </span>
                   </div>
                 ))
@@ -222,14 +238,25 @@ export function StatsCharts(): JSX.Element {
               <p className="text-gray-500 dark:text-gray-400 text-center py-4">No hay datos</p>
             ) : (
               stats.distribution.reportsByCategory.map((item) => {
-                const total = stats.distribution.reportsByCategory.reduce((sum, cat) => sum + cat.count, 0);
+                const total = stats.distribution.reportsByCategory.reduce(
+                  (sum, cat) => sum + cat.count,
+                  0
+                );
                 const percentage = total > 0 ? (item.count / total) * 100 : 0;
                 return (
-                  <div key={item.category} className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                  <div
+                    key={item.category}
+                    className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg"
+                  >
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{item.category}</span>
+                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        {item.category}
+                      </span>
                       <span className="text-sm font-bold text-gray-900 dark:text-white">
-                        {item.count} <span className="text-gray-500 dark:text-gray-400">({percentage.toFixed(1)}%)</span>
+                        {item.count}{' '}
+                        <span className="text-gray-500 dark:text-gray-400">
+                          ({percentage.toFixed(1)}%)
+                        </span>
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3 overflow-hidden">
@@ -347,12 +374,17 @@ export function StatsCharts(): JSX.Element {
                 className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-700/30 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all"
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
-                    index === 0 ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
-                    index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-500' :
-                    index === 2 ? 'bg-gradient-to-br from-orange-600 to-orange-700' :
-                    'bg-gradient-to-br from-gray-500 to-gray-600'
-                  }`}>
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
+                      index === 0
+                        ? 'bg-gradient-to-br from-yellow-500 to-orange-500'
+                        : index === 1
+                          ? 'bg-gradient-to-br from-gray-400 to-gray-500'
+                          : index === 2
+                            ? 'bg-gradient-to-br from-orange-600 to-orange-700'
+                            : 'bg-gradient-to-br from-gray-500 to-gray-600'
+                    }`}
+                  >
                     {index + 1}
                   </div>
                   <div>
@@ -389,7 +421,9 @@ export function StatsCharts(): JSX.Element {
                     }}
                     title={`${item.hour}:00 - ${item.count} mensajes`}
                   ></div>
-                  <span className="text-xs text-gray-600 dark:text-gray-400 mt-2 font-medium">{item.hour}h</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400 mt-2 font-medium">
+                    {item.hour}h
+                  </span>
                 </div>
               );
             })}
@@ -399,4 +433,3 @@ export function StatsCharts(): JSX.Element {
     </div>
   );
 }
-

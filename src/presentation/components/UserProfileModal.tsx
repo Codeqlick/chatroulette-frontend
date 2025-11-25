@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { AxiosError } from 'axios';
 import { ConnectionStatus, type ConnectionState, type ConnectionQuality } from './ConnectionStatus';
 import { Button } from './Button';
-import { userService, type PublicUserProfile, type UserStats } from '@infrastructure/api/user-service';
+import {
+  userService,
+  type PublicUserProfile,
+  type UserStats,
+} from '@infrastructure/api/user-service';
 import { logger } from '@infrastructure/logging/frontend-logger';
 
 interface UserProfileModalProps {
@@ -54,13 +58,13 @@ export function UserProfileModal({
       name: partner?.name,
       hasUsername: !!partner?.username,
       usernameTrimmed: partner?.username?.trim(),
-      usernameLength: partner?.username?.trim()?.length
+      usernameLength: partner?.username?.trim()?.length,
     });
 
     if (!partner?.username || !partner.username.trim()) {
       logger.error('Partner username is missing or empty', {
         username: partner?.username,
-        partnerName: partner?.name
+        partnerName: partner?.name,
       });
       setError('El nombre de usuario no está disponible');
       setIsLoading(false);
@@ -69,64 +73,63 @@ export function UserProfileModal({
 
     const username = partner.username.trim();
     logger.debug('Loading profile for username', { username });
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     let profileError: string | null = null;
-    
+
     Promise.all([
-      userService.getPublicProfile(username)
-        .catch((err: AxiosError) => {
-          logger.error('Error loading profile', {
-            username,
-            status: err.response?.status,
-            statusText: err.response?.statusText,
-            data: err.response?.data,
-            message: err.message,
-            config: {
-              url: err.config?.url,
-              method: err.config?.method
-            }
-          });
-          
-          if (err.response?.status === 401) {
-            profileError = 'Debes iniciar sesión para ver perfiles';
-          } else if (err.response?.status === 404) {
-            profileError = 'Usuario no encontrado';
-          } else if (err.response?.status === 403) {
-            profileError = 'No tienes permisos para ver este perfil';
-          } else {
-            profileError = `Error al cargar el perfil (${err.response?.status || 'desconocido'}). Por favor, intenta nuevamente.`;
-          }
-          return null;
-        }),
-      userService.getUserStats(username)
-        .catch((err: AxiosError) => {
-          logger.error('Error loading stats', {
-            username,
-            status: err.response?.status,
-            data: err.response?.data,
-            message: err.message
-          });
-          // Stats are optional, don't set error for stats failure
-          return null;
-        }),
+      userService.getPublicProfile(username).catch((err: AxiosError) => {
+        logger.error('Error loading profile', {
+          username,
+          status: err.response?.status,
+          statusText: err.response?.statusText,
+          data: err.response?.data,
+          message: err.message,
+          config: {
+            url: err.config?.url,
+            method: err.config?.method,
+          },
+        });
+
+        if (err.response?.status === 401) {
+          profileError = 'Debes iniciar sesión para ver perfiles';
+        } else if (err.response?.status === 404) {
+          profileError = 'Usuario no encontrado';
+        } else if (err.response?.status === 403) {
+          profileError = 'No tienes permisos para ver este perfil';
+        } else {
+          profileError = `Error al cargar el perfil (${err.response?.status || 'desconocido'}). Por favor, intenta nuevamente.`;
+        }
+        return null;
+      }),
+      userService.getUserStats(username).catch((err: AxiosError) => {
+        logger.error('Error loading stats', {
+          username,
+          status: err.response?.status,
+          data: err.response?.data,
+          message: err.message,
+        });
+        // Stats are optional, don't set error for stats failure
+        return null;
+      }),
     ]).then(([profileData, statsData]) => {
       logger.debug('Profile data loaded', {
         hasProfile: !!profileData,
         hasStats: !!statsData,
-        profileUsername: profileData?.username
+        profileUsername: profileData?.username,
       });
-      
+
       setProfile(profileData);
       setStats(statsData);
       setIsLoading(false);
-      
+
       if (!profileData) {
         setError(profileError || 'No se pudo cargar la información del usuario');
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, partner?.username]);
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>): void => {
@@ -167,7 +170,9 @@ export function UserProfileModal({
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full mx-4 overflow-hidden animate-scale-in max-h-[95vh] flex flex-col">
         {/* Header - Simple title */}
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center flex-shrink-0">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Perfil de Usuario</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+            Perfil de Usuario
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg p-1.5 transition-all transform hover:scale-110 flex-shrink-0"
@@ -217,10 +222,7 @@ export function UserProfileModal({
             <>
               {/* Connection Status - Compact */}
               <div className="flex justify-center animate-fade-in-up">
-                  <ConnectionStatus
-                    state={connectionState}
-                    quality={connectionQuality}
-                  />
+                <ConnectionStatus state={connectionState} quality={connectionQuality} />
               </div>
 
               {/* Bio Section */}
@@ -246,8 +248,8 @@ export function UserProfileModal({
                         {profile.bio}
                       </p>
                     </div>
+                  </div>
                 </div>
-              </div>
               )}
 
               {/* Bio Section */}
@@ -280,7 +282,10 @@ export function UserProfileModal({
               {/* Stats Section - Compact */}
               {stats && (
                 <>
-                  <div className="grid grid-cols-2 gap-3 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                  <div
+                    className="grid grid-cols-2 gap-3 animate-fade-in-up"
+                    style={{ animationDelay: '0.2s' }}
+                  >
                     {/* Likes Received */}
                     <div className="bg-gradient-to-br from-pink-50 to-rose-100 dark:from-pink-900/30 dark:to-rose-800/30 rounded-lg p-3 border border-pink-200 dark:border-pink-700 shadow-sm">
                       <div className="flex items-center gap-2">
@@ -296,31 +301,39 @@ export function UserProfileModal({
                         </div>
                         <div>
                           <p className="text-xl font-bold text-gray-900 dark:text-white">
-                            {partnerLikes !== undefined ? partnerLikes : (stats.likesReceived || 0)}
+                            {partnerLikes !== undefined ? partnerLikes : stats.likesReceived || 0}
                           </p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">
-                            {(partnerLikes !== undefined ? partnerLikes : (stats.likesReceived || 0)) === 1 ? 'Like recibido' : 'Likes recibidos'}
+                            {(partnerLikes !== undefined
+                              ? partnerLikes
+                              : stats.likesReceived || 0) === 1
+                              ? 'Like recibido'
+                              : 'Likes recibidos'}
                           </p>
                         </div>
                       </div>
                     </div>
 
                     {/* Reputation Score */}
-                    <div className={`bg-gradient-to-br rounded-lg p-3 border shadow-sm ${
-                      stats.reputationScore >= 501
-                        ? 'from-yellow-50 to-amber-100 dark:from-yellow-900/30 dark:to-amber-800/30 border-yellow-200 dark:border-yellow-700'
-                        : stats.reputationScore >= 101
-                          ? 'from-gray-50 to-slate-100 dark:from-gray-700/30 dark:to-slate-800/30 border-gray-200 dark:border-gray-700'
-                          : 'from-orange-50 to-amber-100 dark:from-orange-900/30 dark:to-amber-800/30 border-orange-200 dark:border-orange-700'
-                    }`}>
+                    <div
+                      className={`bg-gradient-to-br rounded-lg p-3 border shadow-sm ${
+                        stats.reputationScore >= 501
+                          ? 'from-yellow-50 to-amber-100 dark:from-yellow-900/30 dark:to-amber-800/30 border-yellow-200 dark:border-yellow-700'
+                          : stats.reputationScore >= 101
+                            ? 'from-gray-50 to-slate-100 dark:from-gray-700/30 dark:to-slate-800/30 border-gray-200 dark:border-gray-700'
+                            : 'from-orange-50 to-amber-100 dark:from-orange-900/30 dark:to-amber-800/30 border-orange-200 dark:border-orange-700'
+                      }`}
+                    >
                       <div className="flex items-center gap-2">
-                        <div className={`rounded-lg p-1.5 ${
-                          stats.reputationScore >= 501
-                            ? 'bg-yellow-500 dark:bg-yellow-600'
-                            : stats.reputationScore >= 101
-                              ? 'bg-gray-500 dark:bg-gray-600'
-                              : 'bg-orange-500 dark:bg-orange-600'
-                        }`}>
+                        <div
+                          className={`rounded-lg p-1.5 ${
+                            stats.reputationScore >= 501
+                              ? 'bg-yellow-500 dark:bg-yellow-600'
+                              : stats.reputationScore >= 101
+                                ? 'bg-gray-500 dark:bg-gray-600'
+                                : 'bg-orange-500 dark:bg-orange-600'
+                          }`}
+                        >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             className="h-5 w-5 text-white"
@@ -341,7 +354,11 @@ export function UserProfileModal({
                             {stats.reputationScore}
                           </p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">
-                            {stats.reputationScore >= 501 ? 'Oro' : stats.reputationScore >= 101 ? 'Plata' : 'Bronce'}
+                            {stats.reputationScore >= 501
+                              ? 'Oro'
+                              : stats.reputationScore >= 101
+                                ? 'Plata'
+                                : 'Bronce'}
                           </p>
                           {/* Reputation Progress Bar */}
                           <div className="mt-1.5 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
@@ -364,7 +381,10 @@ export function UserProfileModal({
                   </div>
 
                   {/* Time Active - Compact */}
-                  <div className="bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-800/30 rounded-lg p-3 border border-blue-200 dark:border-blue-700 shadow-sm animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+                  <div
+                    className="bg-gradient-to-br from-blue-50 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-800/30 rounded-lg p-3 border border-blue-200 dark:border-blue-700 shadow-sm animate-fade-in-up"
+                    style={{ animationDelay: '0.3s' }}
+                  >
                     <div className="flex items-center gap-2">
                       <div className="rounded-lg p-1.5 bg-blue-500 dark:bg-blue-600">
                         <svg
@@ -384,7 +404,8 @@ export function UserProfileModal({
                       </div>
                       <div>
                         <p className="text-lg font-bold text-gray-900 dark:text-white">
-                          {stats.daysActive} {stats.daysActive === 1 ? 'día activo' : 'días activos'}
+                          {stats.daysActive}{' '}
+                          {stats.daysActive === 1 ? 'día activo' : 'días activos'}
                         </p>
                         <p className="text-xs text-gray-600 dark:text-gray-400">
                           Miembro desde {formatDate(stats.joinedDate)}
@@ -544,11 +565,7 @@ export function UserProfileModal({
                 </>
               )}
             </Button>
-            <Button
-              onClick={onClose}
-              variant="primary"
-              className="flex-1"
-            >
+            <Button onClick={onClose} variant="primary" className="flex-1">
               Cerrar
             </Button>
           </div>

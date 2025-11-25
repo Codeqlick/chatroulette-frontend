@@ -15,6 +15,7 @@ export function AuditLogs(): JSX.Element {
 
   useEffect(() => {
     loadLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, filterEventType]);
 
   const loadLogs = async (): Promise<void> => {
@@ -124,7 +125,10 @@ export function AuditLogs(): JSX.Element {
         ) : logs.length === 0 ? (
           <div className="p-12 text-center text-gray-600 dark:text-gray-400">
             {total === 0 ? (
-              <p>No hay logs de auditoría disponibles. Los logs se almacenan en el sistema de logging.</p>
+              <p>
+                No hay logs de auditoría disponibles. Los logs se almacenan en el sistema de
+                logging.
+              </p>
             ) : (
               'No se encontraron logs con los filtros aplicados.'
             )}
@@ -133,7 +137,10 @@ export function AuditLogs(): JSX.Element {
           <>
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {logs.map((log) => (
-                <div key={log.id} className="p-5 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-all border-l-4 border-transparent hover:border-primary-500">
+                <div
+                  key={log.id}
+                  className="p-5 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-all border-l-4 border-transparent hover:border-primary-500"
+                >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-3 flex-wrap">
@@ -153,20 +160,26 @@ export function AuditLogs(): JSX.Element {
                         {log.userId && (
                           <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 px-3 py-2 rounded-lg">
                             <UserIcon className="w-4 h-4 text-gray-400" />
-                            <span className="font-semibold text-gray-600 dark:text-gray-400">Usuario:</span>
+                            <span className="font-semibold text-gray-600 dark:text-gray-400">
+                              Usuario:
+                            </span>
                             <span className="font-mono text-xs">{log.userId}</span>
                           </div>
                         )}
                         {log.adminId && (
                           <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 px-3 py-2 rounded-lg">
                             <UserIcon className="w-4 h-4 text-gray-400" />
-                            <span className="font-semibold text-gray-600 dark:text-gray-400">Admin:</span>
+                            <span className="font-semibold text-gray-600 dark:text-gray-400">
+                              Admin:
+                            </span>
                             <span className="font-mono text-xs">{log.adminId}</span>
                           </div>
                         )}
                         {log.targetId && (
                           <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 px-3 py-2 rounded-lg">
-                            <span className="font-semibold text-gray-600 dark:text-gray-400">Objetivo:</span>
+                            <span className="font-semibold text-gray-600 dark:text-gray-400">
+                              Objetivo:
+                            </span>
                             <span className="font-mono text-xs">{log.targetId}</span>
                           </div>
                         )}
@@ -198,7 +211,9 @@ export function AuditLogs(): JSX.Element {
                 >
                   Anterior
                 </Button>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Página {currentPage + 1}</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Página {currentPage + 1}
+                </span>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -215,4 +230,3 @@ export function AuditLogs(): JSX.Element {
     </div>
   );
 }
-

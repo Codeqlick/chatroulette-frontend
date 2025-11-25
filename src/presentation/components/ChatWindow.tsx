@@ -44,8 +44,17 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
   const menuContainerMobileRef = useRef<HTMLDivElement>(null);
   const menuContainerDesktopRef = useRef<HTMLDivElement>(null);
 
-  const { messages, addMessage, updateMessage, setTyping, clearSession, loadMessages, isLoadingMessages, setLoadingMessages } = useChatStore();
-  
+  const {
+    messages,
+    addMessage,
+    updateMessage,
+    setTyping,
+    clearSession,
+    loadMessages,
+    isLoadingMessages,
+    setLoadingMessages,
+  } = useChatStore();
+
   // Initialize messagesRef after messages is available, and keep it updated
   const messagesRef = useRef(messages);
   const {
@@ -118,7 +127,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
       try {
         setLoadingMessages(true);
         const response = await sessionService.getSessionMessages(sessionId, 50);
-        
+
         // Convert API messages to ChatMessage format
         const chatMessages = response.messages.map((msg) => ({
           id: msg.id,
@@ -151,7 +160,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
   useEffect(() => {
     // Join session room - ensure WebSocket is connected first
     if (webSocketService.isConnected()) {
-    webSocketService.joinRoom(sessionId);
+      webSocketService.joinRoom(sessionId);
       logger.debug('Joined session room', { sessionId });
     } else {
       logger.warn('WebSocket not connected, waiting to join room', { sessionId });
@@ -163,12 +172,12 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           clearInterval(checkConnection);
         }
       }, 500);
-      
+
       // Timeout after 10 seconds
       setTimeout(() => {
         clearInterval(checkConnection);
       }, 10000);
-      
+
       return () => clearInterval(checkConnection);
     }
 
@@ -184,28 +193,26 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
       };
       if (data.sessionId === sessionId) {
         // Check if message already exists by ID (most reliable) or by content/timestamp
-        const messageExistsById = messagesRef.current.some(
-          (msg) => msg.id === data.messageId
-        );
-        
+        const messageExistsById = messagesRef.current.some((msg) => msg.id === data.messageId);
+
         const messageExistsByContent = messagesRef.current.some(
           (msg) =>
             msg.content === data.message &&
             msg.senderId === data.senderId &&
             Math.abs(msg.timestamp.getTime() - data.timestamp) < 2000 // Within 2 seconds
         );
-        
+
         if (!messageExistsById && !messageExistsByContent) {
-        addMessage({
-          id: data.messageId,
-          sessionId: data.sessionId,
-          senderId: data.senderId,
-          senderUsername: data.senderUsername,
-          content: data.message,
-          timestamp: new Date(data.timestamp),
-          delivered: true,
-          read: false,
-        });
+          addMessage({
+            id: data.messageId,
+            sessionId: data.sessionId,
+            senderId: data.senderId,
+            senderUsername: data.senderUsername,
+            content: data.message,
+            timestamp: new Date(data.timestamp),
+            delivered: true,
+            read: false,
+          });
         }
       }
     };
@@ -266,16 +273,21 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         eventId?: string;
       };
       logger.error('WebSocket error', { error, sessionId });
-      
+
       // Handle rate limit errors with a more user-friendly message
-      if (error.code === 'RATE_LIMIT_EXCEEDED' || error.message.toLowerCase().includes('rate limit')) {
+      if (
+        error.code === 'RATE_LIMIT_EXCEEDED' ||
+        error.message.toLowerCase().includes('rate limit')
+      ) {
         if (error.message.toLowerCase().includes('video offers')) {
-          showWarning('Has enviado demasiadas solicitudes de video. Por favor, espera un momento antes de intentar nuevamente.');
+          showWarning(
+            'Has enviado demasiadas solicitudes de video. Por favor, espera un momento antes de intentar nuevamente.'
+          );
         } else {
           showWarning('Demasiadas solicitudes. Por favor, espera un momento.');
         }
       } else {
-      showError(`Error de conexión: ${error.message}`);
+        showError(`Error de conexión: ${error.message}`);
       }
     };
 
@@ -291,7 +303,10 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
       webSocketService.off(WEBSOCKET_EVENTS.SESSION_PARTNER_TYPING, handleTyping);
       webSocketService.off(WEBSOCKET_EVENTS.ROOM_READY, handleRoomReady);
       webSocketService.off('chat:message:delivered', handleMessageDelivered);
-      webSocketService.off(WEBSOCKET_EVENTS.SESSION_PARTNER_DISCONNECTED, handlePartnerDisconnected);
+      webSocketService.off(
+        WEBSOCKET_EVENTS.SESSION_PARTNER_DISCONNECTED,
+        handlePartnerDisconnected
+      );
       webSocketService.offError(handleError);
       webSocketService.leaveRoom(sessionId);
       setRoomReady(false);
@@ -300,6 +315,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         stopVideoRef.current();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, addMessage, setTyping]);
 
   // Keep messages ref updated
@@ -315,7 +331,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
       }
     }, 100);
-    
+
     return () => clearTimeout(timeoutId);
   }, [messages]);
 
@@ -326,8 +342,11 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
       // Random delay between 500ms and 2000ms to prevent race condition
       // The user with shorter delay will start the offer, the other will wait for it
       const randomDelay = 500 + Math.random() * 1500;
-      logger.debug(`Room ready, starting video in ${Math.round(randomDelay)}ms`, { sessionId, delay: Math.round(randomDelay) });
-      
+      logger.debug(`Room ready, starting video in ${Math.round(randomDelay)}ms`, {
+        sessionId,
+        delay: Math.round(randomDelay),
+      });
+
       const timer = setTimeout(() => {
         logger.debug('Starting video after room ready', { sessionId });
         startVideo().catch((err) => {
@@ -349,11 +368,11 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
 
     const handleClickOutside = (event: MouseEvent): void => {
       const target = event.target as HTMLElement;
-      
+
       // Check both mobile and desktop menu containers
       const isClickInsideMobile = menuContainerMobileRef.current?.contains(target);
       const isClickInsideDesktop = menuContainerDesktopRef.current?.contains(target);
-      
+
       if (!isClickInsideMobile && !isClickInsideDesktop) {
         logger.debug('Click outside menu, closing menu');
         setIsMenuOpen(false);
@@ -364,11 +383,11 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
     const timeoutId = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside, false);
     }, 100);
-    
-      return () => {
+
+    return () => {
       clearTimeout(timeoutId);
       document.removeEventListener('mousedown', handleClickOutside, false);
-      };
+    };
   }, [isMenuOpen]);
 
   const handleSendMessage = (): void => {
@@ -388,7 +407,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
 
     // Clear input immediately for better UX
     setMessage('');
-    
+
     // The message will be added when we receive CHAT_MESSAGE_RECEIVED from server
     // This prevents duplicates
   };
@@ -436,10 +455,10 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
     try {
       // Cleanup WebRTC: stop all video/audio tracks, close connections
       cleanupWebRTC();
-      
+
       // Also call stopVideo for additional cleanup
       stopVideo();
-      
+
       // Stop any active matching before ending session
       try {
         const { matchingService } = await import('@infrastructure/api/matching-service');
@@ -450,20 +469,17 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
       } catch (err) {
         logger.warn('Error importing matching service', { error: err });
       }
-      
+
       // Add timeout for session ending request
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Timeout al terminar sesión')), 10000);
       });
 
-      await Promise.race([
-        sessionService.endSession(sessionId),
-        timeoutPromise,
-      ]);
+      await Promise.race([sessionService.endSession(sessionId), timeoutPromise]);
 
       // Clear session state
       clearSession();
-      
+
       // Navigate back to videochat page - this will trigger reconnection logic
       navigate('/videochat');
     } catch (error) {
@@ -507,10 +523,10 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           likeService.getLikeStatus(sessionId).catch(() => ({ hasLiked: false })),
           likeService.getSessionLikes(sessionId).catch(() => ({ likes: [] })),
         ]);
-        
+
         // Count likes in this session (will need backend update to filter by username)
         const sessionLikesCount = sessionLikes.likes.length;
-        
+
         logger.debug('Reloaded after like toggle', {
           partnerUsername: partner.username,
           sessionId: sessionId,
@@ -519,7 +535,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           previousLikes: previousLikes,
           previousHasLiked: previousHasLiked,
         });
-        
+
         setPartnerLikes(sessionLikesCount);
         setHasLiked(likeStatus.hasLiked || false);
       } catch (statsError) {
@@ -530,7 +546,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
       // Revert optimistic update on error
       setPartnerLikes(previousLikes);
       setHasLiked(previousHasLiked);
-      
+
       logger.error('Error toggling like', { error, sessionId });
       const errorMessage =
         error instanceof Error
@@ -557,10 +573,10 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           likeService.getLikeStatus(sessionId).catch(() => ({ hasLiked: false })),
           likeService.getSessionLikes(sessionId).catch(() => ({ likes: [] })),
         ]);
-        
+
         // Count likes in this session (will need backend update to filter by username)
         const sessionLikesCount = sessionLikes.likes.length;
-        
+
         logger.debug('Loaded initial data', {
           partnerUsername: partner.username,
           sessionId: sessionId,
@@ -568,7 +584,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           hasLiked: likeStatus.hasLiked,
           totalLikesInSession: sessionLikes.likes.length,
         });
-        
+
         setPartnerLikes(sessionLikesCount);
         setHasLiked(likeStatus.hasLiked || false);
       } catch (error) {
@@ -587,7 +603,9 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         {/* Mobile Header */}
         <div className="lg:hidden px-3 sm:px-4 py-2.5 sm:py-3 flex justify-between items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white mr-2 flex-shrink-0">Chatroulette</h1>
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white mr-2 flex-shrink-0">
+              Chatroulette
+            </h1>
             {/* Partner Profile Card */}
             <UserProfileCard
               name={partner.name}
@@ -604,114 +622,19 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
           <div className="flex gap-2 items-center flex-shrink-0">
             {/* Media Controls Group */}
             <div className="flex gap-1.5 items-center bg-gray-100 dark:bg-gray-700/50 px-1.5 py-1 rounded-lg shadow-sm">
-            <button
-              onClick={toggleVideo}
-                className={`relative p-2 rounded-lg transition-all flex-shrink-0 transform hover:scale-105 active:scale-95 ${
-                isVideoEnabled
-                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
-                    : 'bg-red-600 hover:bg-red-700 text-white shadow-md'
-              }`}
-              aria-label={isVideoEnabled ? 'Desactivar video' : 'Activar video'}
-                title={isVideoEnabled ? 'Desactivar video (Clic para activar)' : 'Activar video (Clic para desactivar)'}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                {isVideoEnabled ? (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                  />
-                ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                />
-                )}
-              </svg>
-                {!isVideoEnabled && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-6 h-0.5 bg-white transform rotate-45"></div>
-                  </div>
-                )}
-            </button>
-            <button
-              onClick={toggleAudio}
-                className={`relative p-2 rounded-lg transition-all flex-shrink-0 transform hover:scale-105 active:scale-95 ${
-                isAudioEnabled
-                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
-                    : 'bg-red-600 hover:bg-red-700 text-white shadow-md'
-              }`}
-              aria-label={isAudioEnabled ? 'Desactivar audio' : 'Activar audio'}
-                title={isAudioEnabled ? 'Desactivar audio (Clic para activar)' : 'Activar audio (Clic para desactivar)'}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                {isAudioEnabled ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                />
-                ) : (
-                  <>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"
-                    />
-                  </>
-                )}
-              </svg>
-                {!isAudioEnabled && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-6 h-0.5 bg-white transform rotate-45"></div>
-                  </div>
-                )}
-            </button>
-            </div>
-            {/* Separator */}
-            <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
-            {/* Action Controls Group */}
-            <div className="flex gap-1.5 items-center">
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={handleEndSession}
-              isLoading={isEnding}
-                className="text-xs px-2.5 py-1.5 flex-shrink-0 transform hover:scale-105 active:scale-95 transition-transform"
-                title="Terminar sesión y buscar nuevo chat"
-            >
-              Siguiente
-            </Button>
-              <div className="relative menu-container flex-shrink-0" ref={menuContainerMobileRef}>
               <button
-                type="button"
-                onClick={handleMenuToggle}
-                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white transition-colors pointer-events-auto"
-                aria-label="Menú"
-                aria-expanded={isMenuOpen}
+                onClick={toggleVideo}
+                className={`relative p-2 rounded-lg transition-all flex-shrink-0 transform hover:scale-105 active:scale-95 ${
+                  isVideoEnabled
+                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
+                    : 'bg-red-600 hover:bg-red-700 text-white shadow-md'
+                }`}
+                aria-label={isVideoEnabled ? 'Desactivar video' : 'Activar video'}
+                title={
+                  isVideoEnabled
+                    ? 'Desactivar video (Clic para activar)'
+                    : 'Activar video (Clic para desactivar)'
+                }
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -720,111 +643,223 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                  />
+                  {isVideoEnabled ? (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
+                  ) : (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                    />
+                  )}
                 </svg>
+                {!isVideoEnabled && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-6 h-0.5 bg-white transform rotate-45"></div>
+                  </div>
+                )}
               </button>
-              {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl z-[200] border border-gray-200 dark:border-gray-700">
-                  <div className="p-3">
-                    <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
-                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Opciones</span>
-                    <ThemeToggle />
-                    </div>
-                    {/* Video Device Selector */}
-                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                      <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 px-2">Cámara:</div>
-                      {availableDevices
-                        .filter((d) => d.kind === 'videoinput')
-                        .map((device) => (
-                    <button
-                            key={device.deviceId}
-                            onClick={() => {
-                              changeVideoDevice(device.deviceId);
-                              setIsMenuOpen(false);
-                            }}
-                            className={`w-full text-left px-2 py-1 rounded text-sm transition-colors ${
-                              selectedVideoDeviceId === device.deviceId
-                                ? 'bg-primary-600 text-white'
-                                : 'text-gray-900 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                    >
-                            {device.label}
-                    </button>
-                        ))}
-                    </div>
-                    {/* Audio Device Selector */}
-                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                      <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 px-2">Micrófono:</div>
-                      {availableDevices
-                        .filter((d) => d.kind === 'audioinput')
-                        .map((device) => (
-                          <button
-                            key={device.deviceId}
-                            onClick={() => {
-                              changeAudioDevice(device.deviceId);
-                              setIsMenuOpen(false);
-                            }}
-                            className={`w-full text-left px-2 py-1 rounded text-sm transition-colors ${
-                              selectedAudioDeviceId === device.deviceId
-                                ? 'bg-primary-600 text-white'
-                                : 'text-gray-900 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                          >
-                            {device.label}
-                          </button>
-                        ))}
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-1">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            await blockService.blockUser(partner.username);
-                            await handleEndSession();
-                          } catch (error) {
-                            logger.error('Error blocking user', { error, username: partner.username });
-                            showError('Error al bloquear usuario. Intenta nuevamente.');
-                          }
-                          setIsMenuOpen(false);
-                        }}
-                        className="w-full bg-orange-600 hover:bg-orange-700 text-xs"
-                      >
-                        Bloquear
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          setIsReportModalOpen(true);
-                          setIsMenuOpen(false);
-                        }}
-                        className="w-full bg-red-600 hover:bg-red-700 text-xs"
-                      >
-                        Reportar
-                      </Button>
-                      {user?.role === 'ADMIN' && (
+              <button
+                onClick={toggleAudio}
+                className={`relative p-2 rounded-lg transition-all flex-shrink-0 transform hover:scale-105 active:scale-95 ${
+                  isAudioEnabled
+                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
+                    : 'bg-red-600 hover:bg-red-700 text-white shadow-md'
+                }`}
+                aria-label={isAudioEnabled ? 'Desactivar audio' : 'Activar audio'}
+                title={
+                  isAudioEnabled
+                    ? 'Desactivar audio (Clic para activar)'
+                    : 'Activar audio (Clic para desactivar)'
+                }
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  {isAudioEnabled ? (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                    />
+                  ) : (
+                    <>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"
+                      />
+                    </>
+                  )}
+                </svg>
+                {!isAudioEnabled && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-6 h-0.5 bg-white transform rotate-45"></div>
+                  </div>
+                )}
+              </button>
+            </div>
+            {/* Separator */}
+            <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
+            {/* Action Controls Group */}
+            <div className="flex gap-1.5 items-center">
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleEndSession}
+                isLoading={isEnding}
+                className="text-xs px-2.5 py-1.5 flex-shrink-0 transform hover:scale-105 active:scale-95 transition-transform"
+                title="Terminar sesión y buscar nuevo chat"
+              >
+                Siguiente
+              </Button>
+              <div className="relative menu-container flex-shrink-0" ref={menuContainerMobileRef}>
+                <button
+                  type="button"
+                  onClick={handleMenuToggle}
+                  className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white transition-colors pointer-events-auto"
+                  aria-label="Menú"
+                  aria-expanded={isMenuOpen}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                    />
+                  </svg>
+                </button>
+                {isMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl z-[200] border border-gray-200 dark:border-gray-700">
+                    <div className="p-3">
+                      <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                          Opciones
+                        </span>
+                        <ThemeToggle />
+                      </div>
+                      {/* Video Device Selector */}
+                      <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 px-2">
+                          Cámara:
+                        </div>
+                        {availableDevices
+                          .filter((d) => d.kind === 'videoinput')
+                          .map((device) => (
+                            <button
+                              key={device.deviceId}
+                              onClick={() => {
+                                changeVideoDevice(device.deviceId);
+                                setIsMenuOpen(false);
+                              }}
+                              className={`w-full text-left px-2 py-1 rounded text-sm transition-colors ${
+                                selectedVideoDeviceId === device.deviceId
+                                  ? 'bg-primary-600 text-white'
+                                  : 'text-gray-900 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                            >
+                              {device.label}
+                            </button>
+                          ))}
+                      </div>
+                      {/* Audio Device Selector */}
+                      <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 px-2">
+                          Micrófono:
+                        </div>
+                        {availableDevices
+                          .filter((d) => d.kind === 'audioinput')
+                          .map((device) => (
+                            <button
+                              key={device.deviceId}
+                              onClick={() => {
+                                changeAudioDevice(device.deviceId);
+                                setIsMenuOpen(false);
+                              }}
+                              className={`w-full text-left px-2 py-1 rounded text-sm transition-colors ${
+                                selectedAudioDeviceId === device.deviceId
+                                  ? 'bg-primary-600 text-white'
+                                  : 'text-gray-900 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                            >
+                              {device.label}
+                            </button>
+                          ))}
+                      </div>
+                      <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-1">
                         <Button
-                          variant="primary"
+                          variant="secondary"
                           size="sm"
-                          onClick={() => {
-                            navigate('/admin');
+                          onClick={async () => {
+                            try {
+                              await blockService.blockUser(partner.username);
+                              await handleEndSession();
+                            } catch (error) {
+                              logger.error('Error blocking user', {
+                                error,
+                                username: partner.username,
+                              });
+                              showError('Error al bloquear usuario. Intenta nuevamente.');
+                            }
                             setIsMenuOpen(false);
                           }}
-                          className="w-full text-xs"
+                          className="w-full bg-orange-600 hover:bg-orange-700 text-xs"
                         >
-                          Panel Admin
+                          Bloquear
                         </Button>
-                      )}
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setIsReportModalOpen(true);
+                            setIsMenuOpen(false);
+                          }}
+                          className="w-full bg-red-600 hover:bg-red-700 text-xs"
+                        >
+                          Reportar
+                        </Button>
+                        {user?.role === 'ADMIN' && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => {
+                              navigate('/admin');
+                              setIsMenuOpen(false);
+                            }}
+                            className="w-full text-xs"
+                          >
+                            Panel Admin
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
               </div>
             </div>
           </div>
@@ -833,7 +868,9 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         {/* Desktop Header */}
         <div className="hidden lg:flex px-5 xl:px-6 py-3.5 xl:py-4 justify-between items-center min-w-0 gap-4">
           <div className="flex items-center gap-3 xl:gap-4 min-w-0 flex-1">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex-shrink-0">Chatroulette</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex-shrink-0">
+              Chatroulette
+            </h1>
             <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 flex-shrink-0"></div>
             {/* Partner Profile Card */}
             <UserProfileCard
@@ -849,118 +886,26 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
             />
           </div>
           {/* App Header - User menu */}
-          <AppHeader className="flex-shrink-0 border-0 shadow-none bg-transparent" showLogo={false} />
+          <AppHeader
+            className="flex-shrink-0 border-0 shadow-none bg-transparent"
+            showLogo={false}
+          />
           <div className="flex gap-2 xl:gap-3 items-center flex-shrink-0 ml-2 xl:ml-4">
             {/* Media Controls Group */}
             <div className="flex gap-2 items-center bg-gray-100 dark:bg-gray-700/50 px-2 py-1.5 rounded-lg shadow-sm">
-          <button
-            onClick={toggleVideo}
-                className={`relative p-2.5 rounded-lg transition-all flex-shrink-0 transform hover:scale-105 active:scale-95 ${
-              isVideoEnabled
-                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
-                    : 'bg-red-600 hover:bg-red-700 text-white shadow-md'
-            }`}
-            aria-label={isVideoEnabled ? 'Desactivar video' : 'Activar video'}
-                title={isVideoEnabled ? 'Desactivar video (Clic para activar)' : 'Activar video (Clic para desactivar)'}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 lg:h-5 lg:w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              {isVideoEnabled ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                />
-              ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                />
-              )}
-            </svg>
-            {!isVideoEnabled && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-6 h-0.5 bg-white transform rotate-45"></div>
-              </div>
-            )}
-          </button>
-          <button
-            onClick={toggleAudio}
-                className={`relative p-2.5 rounded-lg transition-all flex-shrink-0 transform hover:scale-105 active:scale-95 ${
-              isAudioEnabled
-                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
-                    : 'bg-red-600 hover:bg-red-700 text-white shadow-md'
-            }`}
-            aria-label={isAudioEnabled ? 'Desactivar audio' : 'Activar audio'}
-                title={isAudioEnabled ? 'Desactivar audio (Clic para activar)' : 'Activar audio (Clic para desactivar)'}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 lg:h-5 lg:w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              {isAudioEnabled ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                />
-              ) : (
-                <>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"
-                  />
-                </>
-              )}
-            </svg>
-            {!isAudioEnabled && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-6 h-0.5 bg-white transform rotate-45"></div>
-              </div>
-            )}
-          </button>
-            </div>
-            {/* Separator */}
-            <div className="h-8 w-px bg-gray-300 dark:bg-gray-600"></div>
-            {/* Action Controls Group */}
-            <div className="flex gap-2 items-center">
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={handleEndSession}
-              isLoading={isEnding}
-                className="text-xs lg:text-sm px-2 lg:px-3 py-1 lg:py-1.5 flex-shrink-0 transform hover:scale-105 active:scale-95 transition-transform"
-                title="Terminar sesión y buscar nuevo chat"
-            >
-              Siguiente
-            </Button>
-            <div className="relative menu-container flex-shrink-0" ref={menuContainerDesktopRef}>
               <button
-                type="button"
-                onClick={handleMenuToggle}
-                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white transition-colors pointer-events-auto"
-                aria-label="Menú"
-                aria-expanded={isMenuOpen}
+                onClick={toggleVideo}
+                className={`relative p-2.5 rounded-lg transition-all flex-shrink-0 transform hover:scale-105 active:scale-95 ${
+                  isVideoEnabled
+                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
+                    : 'bg-red-600 hover:bg-red-700 text-white shadow-md'
+                }`}
+                aria-label={isVideoEnabled ? 'Desactivar video' : 'Activar video'}
+                title={
+                  isVideoEnabled
+                    ? 'Desactivar video (Clic para activar)'
+                    : 'Activar video (Clic para desactivar)'
+                }
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -969,104 +914,218 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                  />
+                  {isVideoEnabled ? (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
+                  ) : (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                    />
+                  )}
                 </svg>
+                {!isVideoEnabled && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-6 h-0.5 bg-white transform rotate-45"></div>
+                  </div>
+                )}
               </button>
-              {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl z-[200] border border-gray-200 dark:border-gray-700">
-                  <div className="p-3">
-                    <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
-                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Opciones</span>
-                    <ThemeToggle />
-                    </div>
-                    {/* Video Device Selector */}
-                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                      <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 px-2">Cámara:</div>
-                      {availableDevices
-                        .filter((d) => d.kind === 'videoinput')
-                        .map((device) => (
-                          <button
-                            key={device.deviceId}
-                            onClick={() => {
-                              changeVideoDevice(device.deviceId);
-                              setIsMenuOpen(false);
-                            }}
-                            className={`w-full text-left px-2 py-1 rounded text-sm transition-colors ${
-                              selectedVideoDeviceId === device.deviceId
-                                ? 'bg-primary-600 text-white'
-                                : 'text-gray-900 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                          >
-                            {device.label}
-                          </button>
-                        ))}
-                    </div>
-                    {/* Audio Device Selector */}
-                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                      <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 px-2">Micrófono:</div>
-                      {availableDevices
-                        .filter((d) => d.kind === 'audioinput')
-                        .map((device) => (
-                          <button
-                            key={device.deviceId}
-                            onClick={() => {
-                              changeAudioDevice(device.deviceId);
-                              setIsMenuOpen(false);
-                            }}
-                            className={`w-full text-left px-2 py-1 rounded text-sm transition-colors ${
-                              selectedAudioDeviceId === device.deviceId
-                                ? 'bg-primary-600 text-white'
-                                : 'text-gray-900 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                          >
-                            {device.label}
-                          </button>
-                        ))}
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-1">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={async () => {
-              try {
-                if (!partner.username) {
-                  showError('No se puede bloquear: el nombre de usuario no está disponible');
-                  setIsMenuOpen(false);
-                  return;
+              <button
+                onClick={toggleAudio}
+                className={`relative p-2.5 rounded-lg transition-all flex-shrink-0 transform hover:scale-105 active:scale-95 ${
+                  isAudioEnabled
+                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
+                    : 'bg-red-600 hover:bg-red-700 text-white shadow-md'
+                }`}
+                aria-label={isAudioEnabled ? 'Desactivar audio' : 'Activar audio'}
+                title={
+                  isAudioEnabled
+                    ? 'Desactivar audio (Clic para activar)'
+                    : 'Activar audio (Clic para desactivar)'
                 }
-                await blockService.blockUser(partner.username);
-                await handleEndSession();
-                setIsMenuOpen(false);
-              } catch (error) {
-                logger.error('Error blocking user', { error, username: partner.username });
-                showError('Error al bloquear usuario. Intenta nuevamente.');
-                setIsMenuOpen(false);
-              }
-            }}
-                        className="w-full bg-orange-600 hover:bg-orange-700 text-xs"
-          >
-            Bloquear
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-                        onClick={() => {
-                          setIsReportModalOpen(true);
-                          setIsMenuOpen(false);
-                        }}
-                        className="w-full bg-red-600 hover:bg-red-700 text-xs"
-          >
-            Reportar
-          </Button>
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 lg:h-5 lg:w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  {isAudioEnabled ? (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                    />
+                  ) : (
+                    <>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"
+                      />
+                    </>
+                  )}
+                </svg>
+                {!isAudioEnabled && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-6 h-0.5 bg-white transform rotate-45"></div>
+                  </div>
+                )}
+              </button>
+            </div>
+            {/* Separator */}
+            <div className="h-8 w-px bg-gray-300 dark:bg-gray-600"></div>
+            {/* Action Controls Group */}
+            <div className="flex gap-2 items-center">
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleEndSession}
+                isLoading={isEnding}
+                className="text-xs lg:text-sm px-2 lg:px-3 py-1 lg:py-1.5 flex-shrink-0 transform hover:scale-105 active:scale-95 transition-transform"
+                title="Terminar sesión y buscar nuevo chat"
+              >
+                Siguiente
+              </Button>
+              <div className="relative menu-container flex-shrink-0" ref={menuContainerDesktopRef}>
+                <button
+                  type="button"
+                  onClick={handleMenuToggle}
+                  className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white transition-colors pointer-events-auto"
+                  aria-label="Menú"
+                  aria-expanded={isMenuOpen}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 lg:h-5 lg:w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                    />
+                  </svg>
+                </button>
+                {isMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl z-[200] border border-gray-200 dark:border-gray-700">
+                    <div className="p-3">
+                      <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                          Opciones
+                        </span>
+                        <ThemeToggle />
+                      </div>
+                      {/* Video Device Selector */}
+                      <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 px-2">
+                          Cámara:
+                        </div>
+                        {availableDevices
+                          .filter((d) => d.kind === 'videoinput')
+                          .map((device) => (
+                            <button
+                              key={device.deviceId}
+                              onClick={() => {
+                                changeVideoDevice(device.deviceId);
+                                setIsMenuOpen(false);
+                              }}
+                              className={`w-full text-left px-2 py-1 rounded text-sm transition-colors ${
+                                selectedVideoDeviceId === device.deviceId
+                                  ? 'bg-primary-600 text-white'
+                                  : 'text-gray-900 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                            >
+                              {device.label}
+                            </button>
+                          ))}
+                      </div>
+                      {/* Audio Device Selector */}
+                      <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 px-2">
+                          Micrófono:
+                        </div>
+                        {availableDevices
+                          .filter((d) => d.kind === 'audioinput')
+                          .map((device) => (
+                            <button
+                              key={device.deviceId}
+                              onClick={() => {
+                                changeAudioDevice(device.deviceId);
+                                setIsMenuOpen(false);
+                              }}
+                              className={`w-full text-left px-2 py-1 rounded text-sm transition-colors ${
+                                selectedAudioDeviceId === device.deviceId
+                                  ? 'bg-primary-600 text-white'
+                                  : 'text-gray-900 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              }`}
+                            >
+                              {device.label}
+                            </button>
+                          ))}
+                      </div>
+                      <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-1">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              if (!partner.username) {
+                                showError(
+                                  'No se puede bloquear: el nombre de usuario no está disponible'
+                                );
+                                setIsMenuOpen(false);
+                                return;
+                              }
+                              await blockService.blockUser(partner.username);
+                              await handleEndSession();
+                              setIsMenuOpen(false);
+                            } catch (error) {
+                              logger.error('Error blocking user', {
+                                error,
+                                username: partner.username,
+                              });
+                              showError('Error al bloquear usuario. Intenta nuevamente.');
+                              setIsMenuOpen(false);
+                            }
+                          }}
+                          className="w-full bg-orange-600 hover:bg-orange-700 text-xs"
+                        >
+                          Bloquear
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setIsReportModalOpen(true);
+                            setIsMenuOpen(false);
+                          }}
+                          className="w-full bg-red-600 hover:bg-red-700 text-xs"
+                        >
+                          Reportar
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
               </div>
             </div>
           </div>
@@ -1086,43 +1145,43 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         <div className="flex flex-col gap-4 w-full lg:flex-[2] lg:h-full p-3 sm:p-4 lg:p-6 items-center justify-center">
           {/* Local Video */}
           <div className="relative bg-black rounded-lg overflow-hidden aspect-[4/3] shadow-lg w-full max-w-md lg:max-w-lg">
-          {localStream ? (
-            <video
-              ref={localVideoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full min-h-[200px]">
+            {localStream ? (
+              <video
+                ref={localVideoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full min-h-[200px]">
                 <Button onClick={startVideo} size="lg" className="text-sm lg:text-base">
-              Iniciar Video
-            </Button>
-            </div>
-          )}
+                  Iniciar Video
+                </Button>
+              </div>
+            )}
             <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 px-2 py-1 rounded text-xs lg:text-sm text-white font-medium">
-            Tú
+              Tú
+            </div>
           </div>
-        </div>
           {/* Remote Video */}
           <div className="relative bg-black rounded-lg overflow-hidden aspect-[4/3] shadow-lg w-full max-w-md lg:max-w-lg">
-          {remoteStream ? (
-            <video
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              className="w-full h-full object-cover"
-            />
-          ) : (
+            {remoteStream ? (
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : (
               <div className="flex items-center justify-center h-full min-h-[200px] text-gray-400 text-sm lg:text-base">
-              Esperando video...
-            </div>
-          )}
+                Esperando video...
+              </div>
+            )}
             <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 px-2 py-1 rounded text-xs lg:text-sm text-white font-medium truncate max-w-[80%]">
-            {partner.name}
+              {partner.name}
+            </div>
           </div>
-        </div>
           {/* Like Button and Stop Button - Solo en móvil, en desktop están en el header */}
           <div className="flex flex-col gap-3 justify-center items-center lg:hidden">
             <button
@@ -1155,9 +1214,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
                   />
                 </svg>
               )}
-              <span className="font-semibold text-sm lg:text-base">
-                {partnerLikes}
-              </span>
+              <span className="font-semibold text-sm lg:text-base">{partnerLikes}</span>
             </button>
             <Button
               variant="danger"
@@ -1171,98 +1228,103 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
               {isEnding ? 'Terminando...' : '⏹️ Detener Videochat'}
             </Button>
           </div>
-      </div>
+        </div>
 
         {/* Chat Section - Sección derecha más estrecha (estilo Flingster) */}
         <div className="flex flex-col w-full lg:flex-[1] lg:max-w-md lg:h-full bg-white dark:bg-gray-900 lg:border-l border-gray-200 dark:border-gray-700 overflow-hidden">
-      {/* Messages Area */}
+          {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-4 transition-colors min-h-0 relative">
-        {isLoadingMessages ? (
-          <div className="text-center text-gray-600 dark:text-gray-400 py-8">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500 mx-auto mb-2"></div>
-            <p className="text-sm">Cargando mensajes...</p>
-          </div>
-        ) : messages.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-center text-gray-600 dark:text-gray-400 text-sm lg:text-base">
-            No hay mensajes aún. ¡Empieza la conversación!
-          </div>
-        ) : (
-          <div className="space-y-3 lg:space-y-4">
-            {messages.map((msg) => {
-            // Use senderUsername to determine if message is from current user
-            const isCurrentUser = user?.username ? msg.senderUsername === user.username : false;
-            return (
-              <div
-                key={msg.id}
-                  className={`animate-slide-up ${
-                  isCurrentUser
-                    ? 'flex justify-end'
-                    : 'flex justify-start'
-                }`}
-              >
-                <div
-                  className={`max-w-[75%] sm:max-w-xs lg:max-w-md px-4 py-2.5 rounded-lg transition-colors ${
-                    isCurrentUser
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600'
-                  }`}
-                >
-                      <p className="text-sm lg:text-base break-words">{msg.content}</p>
-                  <div className="flex items-center justify-between mt-1.5">
-                    <p className={`text-xs ${
-                      isCurrentUser
-                        ? 'text-primary-100'
-                        : 'text-gray-500 dark:text-gray-400'
-                    }`}>
-                      {new Date(msg.timestamp).toLocaleTimeString()}
-                    </p>
-                    {isCurrentUser && (
-                      <span className="text-xs ml-2" title={msg.delivered ? 'Entregado' : 'Enviando...'}>
-                        {msg.delivered ? '✓' : '○'}
-                      </span>
-                    )}
-                  </div>
-                </div>
+            {isLoadingMessages ? (
+              <div className="text-center text-gray-600 dark:text-gray-400 py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500 mx-auto mb-2"></div>
+                <p className="text-sm">Cargando mensajes...</p>
               </div>
-            );
-            })}
+            ) : messages.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-center text-gray-600 dark:text-gray-400 text-sm lg:text-base">
+                No hay mensajes aún. ¡Empieza la conversación!
+              </div>
+            ) : (
+              <div className="space-y-3 lg:space-y-4">
+                {messages.map((msg) => {
+                  // Use senderUsername to determine if message is from current user
+                  const isCurrentUser = user?.username
+                    ? msg.senderUsername === user.username
+                    : false;
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`animate-slide-up ${
+                        isCurrentUser ? 'flex justify-end' : 'flex justify-start'
+                      }`}
+                    >
+                      <div
+                        className={`max-w-[75%] sm:max-w-xs lg:max-w-md px-4 py-2.5 rounded-lg transition-colors ${
+                          isCurrentUser
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600'
+                        }`}
+                      >
+                        <p className="text-sm lg:text-base break-words">{msg.content}</p>
+                        <div className="flex items-center justify-between mt-1.5">
+                          <p
+                            className={`text-xs ${
+                              isCurrentUser
+                                ? 'text-primary-100'
+                                : 'text-gray-500 dark:text-gray-400'
+                            }`}
+                          >
+                            {new Date(msg.timestamp).toLocaleTimeString()}
+                          </p>
+                          {isCurrentUser && (
+                            <span
+                              className="text-xs ml-2"
+                              title={msg.delivered ? 'Entregado' : 'Enviando...'}
+                            >
+                              {msg.delivered ? '✓' : '○'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div ref={messagesEndRef} className="h-0" />
           </div>
-        )}
-        <div ref={messagesEndRef} className="h-0" />
-      </div>
 
-      {/* Input Area */}
+          {/* Input Area */}
           <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-4 border-t border-gray-200 dark:border-gray-700 transition-colors flex-shrink-0">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => {
-              setMessage(e.target.value);
-              handleTyping();
-            }}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            placeholder="Escribe un mensaje..."
-            maxLength={API_CONSTANTS.MAX_MESSAGE_LENGTH}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => {
+                  setMessage(e.target.value);
+                  handleTyping();
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="Escribe un mensaje..."
+                maxLength={API_CONSTANTS.MAX_MESSAGE_LENGTH}
                 className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-sm lg:text-base bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
-          />
-          <Button
-            onClick={handleSendMessage}
-            disabled={!message.trim()}
-            size="md"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!message.trim()}
+                size="md"
                 className="text-sm lg:text-base px-3 sm:px-4 lg:px-6 flex-shrink-0"
-          >
-            Enviar
-          </Button>
-        </div>
+              >
+                Enviar
+              </Button>
+            </div>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 sm:mt-2 text-right">
-          {message.length}/{API_CONSTANTS.MAX_MESSAGE_LENGTH}
-        </p>
+              {message.length}/{API_CONSTANTS.MAX_MESSAGE_LENGTH}
+            </p>
           </div>
         </div>
       </div>
@@ -1313,4 +1375,3 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
     </div>
   );
 }
-

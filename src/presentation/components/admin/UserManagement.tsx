@@ -21,6 +21,7 @@ export function UserManagement(): JSX.Element {
 
   useEffect(() => {
     loadUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, searchTerm, filterBanned, filterVerified, filterRole]);
 
   const loadUsers = async (): Promise<void> => {
@@ -172,11 +173,7 @@ export function UserManagement(): JSX.Element {
                     >
                       <td className="px-6 py-5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <Avatar
-                            name={user.name}
-                            avatar={user.avatar}
-                            size="md"
-                          />
+                          <Avatar name={user.name} avatar={user.avatar} size="md" />
                           <div>
                             <div className="text-sm font-semibold text-gray-900 dark:text-white">
                               {user.name}
@@ -212,13 +209,16 @@ export function UserManagement(): JSX.Element {
                       <td className="px-6 py-5 whitespace-nowrap">
                         <div className="space-y-1.5 text-sm">
                           <div className="text-gray-700 dark:text-gray-300">
-                            <span className="font-semibold">{user.stats.sessionsCount}</span> sesiones
+                            <span className="font-semibold">{user.stats.sessionsCount}</span>{' '}
+                            sesiones
                           </div>
                           <div className="text-gray-700 dark:text-gray-300">
-                            <span className="font-semibold">{user.stats.reportsReceived}</span> reportes
+                            <span className="font-semibold">{user.stats.reportsReceived}</span>{' '}
+                            reportes
                           </div>
                           <div className="text-gray-700 dark:text-gray-300">
-                            <span className="font-semibold">{user.stats.messagesCount}</span> mensajes
+                            <span className="font-semibold">{user.stats.messagesCount}</span>{' '}
+                            mensajes
                           </div>
                         </div>
                       </td>
@@ -280,4 +280,3 @@ export function UserManagement(): JSX.Element {
     </div>
   );
 }
-

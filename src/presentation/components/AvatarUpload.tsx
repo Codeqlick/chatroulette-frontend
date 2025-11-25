@@ -8,10 +8,7 @@ interface AvatarUploadProps {
   onUploadComplete?: (avatarUrl: string) => void;
 }
 
-export function AvatarUpload({
-  currentAvatar,
-  onUploadComplete,
-}: AvatarUploadProps): JSX.Element {
+export function AvatarUpload({ currentAvatar, onUploadComplete }: AvatarUploadProps): JSX.Element {
   const [preview, setPreview] = useState<string | null>(currentAvatar || null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,9 +77,7 @@ export function AvatarUpload({
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error
-          ? err.message
-          : 'Error al subir el avatar. Intenta nuevamente.';
+        err instanceof Error ? err.message : 'Error al subir el avatar. Intenta nuevamente.';
       setError(errorMessage);
       setPreview(currentAvatar || null); // Revert preview on error
     } finally {
@@ -90,9 +85,7 @@ export function AvatarUpload({
     }
   };
 
-  const handleFileInputChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ): void => {
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
     if (file) {
       handleFileSelect(file);
@@ -126,20 +119,14 @@ export function AvatarUpload({
     <div className="space-y-4">
       <div
         className={`relative w-32 h-32 mx-auto rounded-full overflow-hidden border-2 border-dashed transition-colors ${
-          isDragging
-            ? 'border-primary-500 bg-primary-500/20'
-            : 'border-gray-600 bg-gray-800'
+          isDragging ? 'border-primary-500 bg-primary-500/20' : 'border-gray-600 bg-gray-800'
         }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         {preview ? (
-          <img
-            src={preview}
-            alt="Avatar preview"
-            className="w-full h-full object-cover"
-          />
+          <img src={preview} alt="Avatar preview" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400">
             <svg
@@ -187,9 +174,7 @@ export function AvatarUpload({
         <p className="text-xs text-gray-400">
           Arrastra una imagen aquí o haz clic para seleccionar
         </p>
-        <p className="text-xs text-gray-500">
-          JPEG, PNG o WebP (máx. 5MB)
-        </p>
+        <p className="text-xs text-gray-500">JPEG, PNG o WebP (máx. 5MB)</p>
       </div>
 
       {error && (
@@ -200,4 +185,3 @@ export function AvatarUpload({
     </div>
   );
 }
-

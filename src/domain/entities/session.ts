@@ -18,4 +18,3 @@ export interface ChatMessage {
   delivered: boolean;
   read: boolean;
 }
-

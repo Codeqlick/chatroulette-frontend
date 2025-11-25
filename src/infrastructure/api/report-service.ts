@@ -41,14 +41,14 @@ export interface CreateUserReportResponse {
 
 export class ReportService {
   async createReport(request: CreateReportRequest): Promise<CreateReportResponse> {
-    const response = await apiClient.instance.post<CreateReportResponse>(
-      '/reports',
-      request
-    );
+    const response = await apiClient.instance.post<CreateReportResponse>('/reports', request);
     return response.data;
   }
 
-  async createUserReport(username: string, request: CreateUserReportRequest): Promise<CreateUserReportResponse> {
+  async createUserReport(
+    username: string,
+    request: CreateUserReportRequest
+  ): Promise<CreateUserReportResponse> {
     const response = await apiClient.instance.post<CreateUserReportResponse>(
       `/reports/user/${encodeURIComponent(username)}`,
       request
@@ -58,4 +58,3 @@ export class ReportService {
 }
 
 export const reportService = new ReportService();
-

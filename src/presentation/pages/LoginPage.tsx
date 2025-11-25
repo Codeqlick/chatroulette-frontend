@@ -25,7 +25,7 @@ export function LoginPage(): JSX.Element {
       if (state.user?.role === 'ADMIN') {
         navigate('/admin');
       } else {
-      navigate('/videochat');
+        navigate('/videochat');
       }
       setShouldNavigate(false);
     }
@@ -40,19 +40,38 @@ export function LoginPage(): JSX.Element {
       await login(email, password);
       // Esperar a que el estado se hidrate antes de navegar
       setShouldNavigate(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Manejar errores específicos del backend
-      if (err?.response?.data?.error?.message) {
-        const errorMessage = err.response.data.error.message;
-        const statusCode = err.response?.status;
+      if (
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        err.response &&
+        typeof err.response === 'object' &&
+        'data' in err.response &&
+        err.response.data &&
+        typeof err.response.data === 'object' &&
+        'error' in err.response.data &&
+        err.response.data.error &&
+        typeof err.response.data.error === 'object' &&
+        'message' in err.response.data.error
+      ) {
+        const errorResponse = err.response as {
+          data: { error: { message: string; details?: Record<string, string> } };
+          status?: number;
+        };
+        const errorMessage = errorResponse.data.error.message;
+        const statusCode = errorResponse.status;
 
         // Mensajes específicos según el código de estado
         if (statusCode === 403) {
           // Email no verificado o usuario baneado
           if (errorMessage.includes('Email not verified')) {
-            setError('Tu email no está verificado. Por favor verifica tu email antes de iniciar sesión.');
+            setError(
+              'Tu email no está verificado. Por favor verifica tu email antes de iniciar sesión.'
+            );
           } else if (errorMessage.includes('Banned')) {
-            const banDetails = err.response?.data?.error?.details;
+            const banDetails = errorResponse.data.error.details;
             setBanInfo({
               email,
               details: {
@@ -68,21 +87,26 @@ export function LoginPage(): JSX.Element {
           }
         } else if (statusCode === 401) {
           // Credenciales inválidas
-          if (errorMessage.includes('Invalid email or password') || errorMessage.includes('INVALID_CREDENTIALS')) {
+          if (
+            errorMessage.includes('Invalid email or password') ||
+            errorMessage.includes('INVALID_CREDENTIALS')
+          ) {
             setError('Email o contraseña incorrectos. Verifica tus credenciales.');
           } else {
             setError(errorMessage);
           }
         } else if (statusCode === 429) {
           // Rate limit
-          setError('Demasiados intentos fallidos. Por favor espera un momento antes de intentar nuevamente.');
+          setError(
+            'Demasiados intentos fallidos. Por favor espera un momento antes de intentar nuevamente.'
+          );
         } else {
           // Otros errores - mostrar mensaje del backend
           setError(errorMessage);
         }
       } else {
         // Error sin respuesta del servidor
-      setError('Error al iniciar sesión. Verifica tus credenciales.');
+        setError('Error al iniciar sesión. Verifica tus credenciales.');
       }
       setLoading(false);
     }
@@ -138,4 +162,3 @@ export function LoginPage(): JSX.Element {
     </div>
   );
 }
-

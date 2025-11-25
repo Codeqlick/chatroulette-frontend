@@ -17,6 +17,7 @@ export function ReportsHistory(): JSX.Element {
 
   useEffect(() => {
     loadReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, filterStatus, filterCategory]);
 
   const loadReports = async (): Promise<void> => {
@@ -26,14 +27,21 @@ export function ReportsHistory(): JSX.Element {
       const response = await adminService.getReportsHistory({
         limit,
         offset: currentPage * limit,
-        status: filterStatus === 'all' ? undefined : (filterStatus as 'PENDING' | 'RESOLVED' | 'DISMISSED'),
-        category: filterCategory === 'all' ? undefined : (filterCategory as 'SPAM' | 'INAPPROPRIATE_CONTENT' | 'HARASSMENT' | 'OTHER'),
+        status:
+          filterStatus === 'all'
+            ? undefined
+            : (filterStatus as 'PENDING' | 'RESOLVED' | 'DISMISSED'),
+        category:
+          filterCategory === 'all'
+            ? undefined
+            : (filterCategory as 'SPAM' | 'INAPPROPRIATE_CONTENT' | 'HARASSMENT' | 'OTHER'),
       });
       setReports(response.reports);
       setTotal(response.total);
       setHasMore(response.hasMore);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al cargar historial de reportes';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Error al cargar historial de reportes';
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -129,7 +137,10 @@ export function ReportsHistory(): JSX.Element {
           <>
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {reports.map((report) => (
-                <div key={report.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-all border-l-4 border-transparent hover:border-primary-500">
+                <div
+                  key={report.id}
+                  className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-all border-l-4 border-transparent hover:border-primary-500"
+                >
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-3 flex-wrap">
@@ -147,7 +158,9 @@ export function ReportsHistory(): JSX.Element {
                         </span>
                       </div>
                       {report.description && (
-                        <p className="text-gray-700 dark:text-gray-300 mb-4 line-clamp-2 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg text-sm">{report.description}</p>
+                        <p className="text-gray-700 dark:text-gray-300 mb-4 line-clamp-2 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg text-sm">
+                          {report.description}
+                        </p>
                       )}
                       <div className="flex flex-wrap gap-6 text-sm mb-3">
                         {report.reporter && (
@@ -155,20 +168,38 @@ export function ReportsHistory(): JSX.Element {
                             <UserIcon className="w-4 h-4 text-gray-400" />
                             <span className="text-gray-500 dark:text-gray-400">Reportado por:</span>
                             <div className="flex items-center gap-2">
-                              <Avatar name={report.reporter.name} avatar={report.reporter.avatar} size="xs" />
-                              <span className="font-semibold text-gray-900 dark:text-white">{report.reporter.name}</span>
-                              <span className="text-gray-500 dark:text-gray-400">@{report.reporter.username}</span>
+                              <Avatar
+                                name={report.reporter.name}
+                                avatar={report.reporter.avatar}
+                                size="xs"
+                              />
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                {report.reporter.name}
+                              </span>
+                              <span className="text-gray-500 dark:text-gray-400">
+                                @{report.reporter.username}
+                              </span>
                             </div>
                           </div>
                         )}
                         {report.reportedUser && (
                           <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 px-3 py-2 rounded-lg">
                             <UserIcon className="w-4 h-4 text-gray-400" />
-                            <span className="text-gray-500 dark:text-gray-400">Usuario reportado:</span>
+                            <span className="text-gray-500 dark:text-gray-400">
+                              Usuario reportado:
+                            </span>
                             <div className="flex items-center gap-2">
-                              <Avatar name={report.reportedUser.name} avatar={report.reportedUser.avatar} size="xs" />
-                              <span className="font-semibold text-gray-900 dark:text-white">{report.reportedUser.name}</span>
-                              <span className="text-gray-500 dark:text-gray-400">@{report.reportedUser.username}</span>
+                              <Avatar
+                                name={report.reportedUser.name}
+                                avatar={report.reportedUser.avatar}
+                                size="xs"
+                              />
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                {report.reportedUser.name}
+                              </span>
+                              <span className="text-gray-500 dark:text-gray-400">
+                                @{report.reportedUser.username}
+                              </span>
                               {report.reportedUser.isBanned && (
                                 <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-full text-xs font-semibold">
                                   Baneado
@@ -201,7 +232,9 @@ export function ReportsHistory(): JSX.Element {
                 >
                   Anterior
                 </Button>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Página {currentPage + 1}</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Página {currentPage + 1}
+                </span>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -218,4 +251,3 @@ export function ReportsHistory(): JSX.Element {
     </div>
   );
 }
-

@@ -44,7 +44,7 @@ export class ApiClient {
               // Get the new token after refresh
               const newToken = useAuthStore.getState().accessToken || token;
               config.headers.Authorization = `Bearer ${newToken}`;
-            } catch (error) {
+            } catch {
               // Refresh failed or is in progress, use current token
               // If token is actually expired, the request will fail and trigger reactive refresh
               config.headers.Authorization = `Bearer ${token}`;
@@ -108,7 +108,7 @@ export class ApiClient {
           try {
             // Use the refresh method from auth store which handles all updates
             await useAuthStore.getState().refreshAccessToken();
-            
+
             // Get the new token after refresh
             const newState = useAuthStore.getState();
             const newAccessToken = newState.accessToken;
@@ -136,25 +136,27 @@ export class ApiClient {
             });
             this.failedQueue = [];
             this.isRefreshing = false;
-            
+
             return Promise.reject(refreshError);
           }
         }
 
         if (error.response?.status === 403) {
-          const errorPayload = (error.response.data as { error?: { message?: string; details?: Record<string, string> } })?.error;
+          const errorPayload = (
+            error.response.data as {
+              error?: { message?: string; details?: Record<string, string> };
+            }
+          )?.error;
           const message = errorPayload?.message ?? '';
           if (message.toLowerCase().includes('banned')) {
             const details = errorPayload?.details;
-            useBanStore
-              .getState()
-              .setBanInfo({
-                details: {
-                  reason: details?.reason,
-                  bannedAt: details?.bannedAt,
-                  bannedUntil: details?.bannedUntil,
-                },
-              });
+            useBanStore.getState().setBanInfo({
+              details: {
+                reason: details?.reason,
+                bannedAt: details?.bannedAt,
+                bannedUntil: details?.bannedUntil,
+              },
+            });
 
             if (typeof window !== 'undefined' && window.location.pathname !== '/banned') {
               window.location.href = '/banned';
@@ -173,4 +175,3 @@ export class ApiClient {
 }
 
 export const apiClient = new ApiClient();
-

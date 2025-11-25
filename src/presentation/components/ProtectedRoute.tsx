@@ -35,4 +35,3 @@ export function ProtectedRoute({ children }: ProtectedRouteProps): JSX.Element {
 
   return children;
 }
-
