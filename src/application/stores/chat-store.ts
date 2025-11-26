@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ChatMessage } from '@domain/entities/session';
+import type { ChatMessage } from '@domain/entities/session';
 
 interface ChatState {
   messages: ChatMessage[];

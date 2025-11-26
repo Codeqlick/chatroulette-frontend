@@ -9,7 +9,7 @@ import { ReportsHistory } from '../components/admin/ReportsHistory';
 import { ActiveSessions } from '../components/admin/ActiveSessions';
 import { StatsCharts } from '../components/admin/StatsCharts';
 import { AuditLogs } from '../components/admin/AuditLogs';
-import { PendingReport } from '@infrastructure/api/admin-service';
+import type { PendingReport } from '@infrastructure/api/admin-service';
 import { logger } from '@infrastructure/logging/frontend-logger';
 import {
   DashboardIcon,

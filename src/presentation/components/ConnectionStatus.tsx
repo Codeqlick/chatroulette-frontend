@@ -5,8 +5,8 @@ export type ConnectionQuality = 'good' | 'medium' | 'poor';
 
 interface ConnectionStatusProps {
   state: ConnectionState;
-  quality?: ConnectionQuality;
-  className?: string;
+  quality?: ConnectionQuality | undefined;
+  className?: string | undefined;
 }
 
 export function ConnectionStatus({

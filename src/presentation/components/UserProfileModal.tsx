@@ -18,11 +18,11 @@ interface UserProfileModalProps {
     avatar: string | null;
   };
   connectionState: ConnectionState;
-  connectionQuality?: ConnectionQuality;
-  sessionId?: string;
-  onReport?: () => void;
-  onBlock?: () => void;
-  partnerLikes?: number;
+  connectionQuality?: ConnectionQuality | undefined;
+  sessionId?: string | undefined;
+  onReport?: (() => void) | undefined;
+  onBlock?: (() => void) | undefined;
+  partnerLikes?: number | undefined;
 }
 
 export function UserProfileModal({

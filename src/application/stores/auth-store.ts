@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { authService, AuthResponse } from '@infrastructure/api/auth-service';
-import { User } from '@domain/entities/user';
+import { authService } from '@infrastructure/api/auth-service';
+import type { AuthResponse } from '@infrastructure/api/auth-service';
+import type { User } from '@domain/entities/user';
 import { useChatStore } from './chat-store';
 import { isTokenExpiringSoon, isTokenExpired } from '@infrastructure/utils/jwt-utils';
 import { webSocketService } from '@infrastructure/websocket/websocket-service';

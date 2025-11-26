@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { useThemeStore, Theme } from '@application/stores/theme-store';
+import { useThemeStore } from '@application/stores/theme-store';
+import type { Theme } from '@application/stores/theme-store';
 
 export function useTheme(): {
   theme: Theme;

@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 
 interface ToastProps {
   message: string;
-  type?: 'success' | 'error' | 'info' | 'warning';
-  duration?: number;
+  type?: 'success' | 'error' | 'info' | 'warning' | undefined;
+  duration?: number | undefined;
   onClose: () => void;
 }
 

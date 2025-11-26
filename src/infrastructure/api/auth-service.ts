@@ -1,5 +1,5 @@
 import { apiClient } from './api-client';
-import { User } from '@domain/entities/user';
+import type { User } from '@domain/entities/user';
 
 export interface RegisterRequest {
   email: string;

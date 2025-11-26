@@ -3,15 +3,15 @@ import { ConnectionStatus, type ConnectionState, type ConnectionQuality } from '
 
 interface UserProfileCardProps {
   name: string;
-  username?: string;
-  avatar?: string | null;
-  connectionState?: ConnectionState;
-  connectionQuality?: ConnectionQuality;
-  size?: 'sm' | 'md' | 'lg';
-  showUsername?: boolean;
-  showConnectionStatus?: boolean;
-  onClick?: () => void;
-  className?: string;
+  username?: string | undefined;
+  avatar?: string | null | undefined;
+  connectionState?: ConnectionState | undefined;
+  connectionQuality?: ConnectionQuality | undefined;
+  size?: 'sm' | 'md' | 'lg' | undefined;
+  showUsername?: boolean | undefined;
+  showConnectionStatus?: boolean | undefined;
+  onClick?: (() => void) | undefined;
+  className?: string | undefined;
 }
 
 export function UserProfileCard({

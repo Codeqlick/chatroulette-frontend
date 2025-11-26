@@ -1,4 +1,5 @@
-import { webrtcService, WebRTCMetric } from '@infrastructure/api/webrtc-service';
+import { webrtcService } from '@infrastructure/api/webrtc-service';
+import type { WebRTCMetric } from '@infrastructure/api/webrtc-service';
 import { logger } from '@infrastructure/logging/frontend-logger';
 import { useAuthStore } from '@application/stores/auth-store';
 import { decodeJWT } from '@infrastructure/utils/jwt-utils';

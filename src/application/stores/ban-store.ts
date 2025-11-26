@@ -1,17 +1,17 @@
 import { create } from 'zustand';
 
 export interface BanDetails {
-  reason?: string;
-  bannedAt?: string;
-  bannedUntil?: string;
-  supportMessage?: string;
+  reason?: string | undefined;
+  bannedAt?: string | undefined;
+  bannedUntil?: string | undefined;
+  supportMessage?: string | undefined;
 }
 
 interface BanState {
   isBanned: boolean;
-  email?: string;
-  details?: BanDetails;
-  setBanInfo: (info: { email?: string; details?: BanDetails }) => void;
+  email?: string | undefined;
+  details?: BanDetails | undefined;
+  setBanInfo: (info: { email?: string | undefined; details?: BanDetails | undefined }) => void;
   clearBanInfo: () => void;
 }
 

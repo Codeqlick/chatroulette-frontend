@@ -9,20 +9,20 @@ export interface WebRTCConfig {
 }
 
 export interface WebRTCMetric {
-  timestamp?: string;
-  packetLossAudio?: number;
-  packetLossVideo?: number;
-  jitterAudio?: number;
-  jitterVideo?: number;
-  rtt?: number;
-  bitrateSent?: number;
-  bitrateReceived?: number;
-  fps?: number;
-  resolution?: string;
-  iceConnectionState?: string;
-  usingTurn?: boolean;
-  bytesSent?: number;
-  bytesReceived?: number;
+  timestamp?: string | undefined;
+  packetLossAudio?: number | undefined;
+  packetLossVideo?: number | undefined;
+  jitterAudio?: number | undefined;
+  jitterVideo?: number | undefined;
+  rtt?: number | undefined;
+  bitrateSent?: number | undefined;
+  bitrateReceived?: number | undefined;
+  fps?: number | undefined;
+  resolution?: string | undefined;
+  iceConnectionState?: string | undefined;
+  usingTurn?: boolean | undefined;
+  bytesSent?: number | undefined;
+  bytesReceived?: number | undefined;
 }
 
 export interface RecordWebRTCMetricsRequest {

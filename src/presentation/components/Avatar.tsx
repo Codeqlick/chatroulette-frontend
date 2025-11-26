@@ -1,11 +1,11 @@
 interface AvatarProps {
   name: string;
-  avatar?: string | null;
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-  className?: string;
-  showRing?: boolean;
-  ringColor?: 'default' | 'green' | 'yellow' | 'gray';
-  ringPulse?: boolean;
+  avatar?: string | null | undefined;
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | undefined;
+  className?: string | undefined;
+  showRing?: boolean | undefined;
+  ringColor?: 'default' | 'green' | 'yellow' | 'gray' | undefined;
+  ringPulse?: boolean | undefined;
 }
 
 const sizeClasses = {

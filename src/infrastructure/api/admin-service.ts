@@ -126,7 +126,7 @@ export interface UserDetails {
 
 export interface BanUserRequest {
   reason: string;
-  bannedUntil?: string;
+  bannedUntil?: string | undefined;
 }
 
 export interface BanUserResponse {
@@ -315,12 +315,12 @@ export class AdminService {
   }
 
   async getUsers(params?: {
-    limit?: number;
-    offset?: number;
-    search?: string;
-    isBanned?: boolean;
-    emailVerified?: boolean;
-    role?: 'USER' | 'ADMIN';
+    limit?: number | undefined;
+    offset?: number | undefined;
+    search?: string | undefined;
+    isBanned?: boolean | undefined;
+    emailVerified?: boolean | undefined;
+    role?: 'USER' | 'ADMIN' | undefined;
   }): Promise<GetUsersResponse> {
     const queryParams = new URLSearchParams();
     if (params?.limit !== undefined) queryParams.append('limit', params.limit.toString());
@@ -359,13 +359,13 @@ export class AdminService {
   }
 
   async getReportsHistory(params?: {
-    limit?: number;
-    offset?: number;
-    status?: 'PENDING' | 'RESOLVED' | 'DISMISSED';
-    category?: 'SPAM' | 'INAPPROPRIATE_CONTENT' | 'HARASSMENT' | 'OTHER';
-    reportedUserId?: string;
-    startDate?: string;
-    endDate?: string;
+    limit?: number | undefined;
+    offset?: number | undefined;
+    status?: 'PENDING' | 'RESOLVED' | 'DISMISSED' | undefined;
+    category?: 'SPAM' | 'INAPPROPRIATE_CONTENT' | 'HARASSMENT' | 'OTHER' | undefined;
+    reportedUserId?: string | undefined;
+    startDate?: string | undefined;
+    endDate?: string | undefined;
   }): Promise<GetReportsHistoryResponse> {
     const queryParams = new URLSearchParams();
     if (params?.limit !== undefined) queryParams.append('limit', params.limit.toString());
@@ -383,8 +383,8 @@ export class AdminService {
   }
 
   async getActiveSessions(params?: {
-    limit?: number;
-    offset?: number;
+    limit?: number | undefined;
+    offset?: number | undefined;
   }): Promise<GetActiveSessionsResponse> {
     const queryParams = new URLSearchParams();
     if (params?.limit !== undefined) queryParams.append('limit', params.limit.toString());
@@ -405,13 +405,13 @@ export class AdminService {
   }
 
   async getAuditLogs(params?: {
-    limit?: number;
-    offset?: number;
-    eventType?: string;
-    userId?: string;
-    adminId?: string;
-    startDate?: string;
-    endDate?: string;
+    limit?: number | undefined;
+    offset?: number | undefined;
+    eventType?: string | undefined;
+    userId?: string | undefined;
+    adminId?: string | undefined;
+    startDate?: string | undefined;
+    endDate?: string | undefined;
   }): Promise<GetAuditLogsResponse> {
     const queryParams = new URLSearchParams();
     if (params?.limit !== undefined) queryParams.append('limit', params.limit.toString());

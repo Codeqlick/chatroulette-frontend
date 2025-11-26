@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AxiosError } from 'axios';
-import { userService, PublicUserProfile, UserStats } from '@infrastructure/api/user-service';
+import { userService } from '@infrastructure/api/user-service';
+import type { PublicUserProfile, UserStats } from '@infrastructure/api/user-service';
 import { blockService } from '@infrastructure/api/block-service';
 import { useAuthStore } from '@application/stores/auth-store';
 import { Button } from '../components/Button';
