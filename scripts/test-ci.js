@@ -33,15 +33,20 @@ const validArgs = [
 
 // Filtrar argumentos desconocidos
 const args = process.argv.slice(2).filter((arg) => {
-  // Permitir argumentos válidos
-  if (validArgs.some((valid) => arg.startsWith(valid))) {
-    return true;
-  }
-  // Ignorar --runInBand y otros flags de Jest
+  // Ignorar --runInBand y otros flags de Jest que no son válidos en Vitest
   if (arg === '--runInBand' || arg.startsWith('--runInBand')) {
     return false;
   }
-  // Permitir otros argumentos que podrían ser válidos
+  // Permitir argumentos válidos de Vitest
+  if (validArgs.some((valid) => arg.startsWith(valid))) {
+    return true;
+  }
+  // Ignorar argumentos que empiezan con -- pero no están en la lista válida
+  // (excepto si son nombres de archivos o paths)
+  if (arg.startsWith('--') && !arg.includes('/') && !arg.includes('\\')) {
+    return false;
+  }
+  // Permitir otros argumentos que podrían ser válidos (como nombres de archivos)
   return true;
 });
 
