@@ -1,4 +1,4 @@
-import { Page, expect } from '@playwright/test';
+import { Page } from '@playwright/test';
 
 /**
  * Helper functions for matching E2E tests.
@@ -10,7 +10,7 @@ import { Page, expect } from '@playwright/test';
 export async function waitForVideochatReady(page: Page, timeout = 30000): Promise<void> {
   // Wait for video element to be present and have stream
   await page.waitForSelector('video', { timeout });
-  
+
   // Wait for video to have srcObject
   await page.waitForFunction(
     () => {
@@ -26,7 +26,9 @@ export async function waitForVideochatReady(page: Page, timeout = 30000): Promis
  */
 export async function startMatching(page: Page): Promise<void> {
   // Find and click the connect button
-  const connectButton = page.locator('button:has-text("Conectar"), button:has-text("▶️ Conectar")').first();
+  const connectButton = page
+    .locator('button:has-text("Conectar"), button:has-text("▶️ Conectar")')
+    .first();
   await connectButton.waitFor({ state: 'visible', timeout: 10000 });
   await connectButton.click();
 }
@@ -37,9 +39,12 @@ export async function startMatching(page: Page): Promise<void> {
 export async function waitForMatch(page: Page, timeout = 60000): Promise<void> {
   // Wait for chat window to appear (indicates match found)
   // Chat window typically has message input or partner info
-  await page.waitForSelector('input[type="text"][placeholder*="mensaje"], textarea[placeholder*="mensaje"]', {
-    timeout,
-  });
+  await page.waitForSelector(
+    'input[type="text"][placeholder*="mensaje"], textarea[placeholder*="mensaje"]',
+    {
+      timeout,
+    }
+  );
 }
 
 /**
@@ -55,7 +60,9 @@ export async function isSearching(page: Page): Promise<boolean> {
  * Cancels the current search.
  */
 export async function cancelSearch(page: Page): Promise<void> {
-  const cancelButton = page.locator('button:has-text("Cancelar"), button:has-text("Cancel")').first();
+  const cancelButton = page
+    .locator('button:has-text("Cancelar"), button:has-text("Cancel")')
+    .first();
   if (await cancelButton.isVisible({ timeout: 2000 }).catch(() => false)) {
     await cancelButton.click();
   }
@@ -66,9 +73,11 @@ export async function cancelSearch(page: Page): Promise<void> {
  */
 export async function sendMessage(page: Page, message: string): Promise<void> {
   // Find message input
-  const messageInput = page.locator('input[type="text"][placeholder*="mensaje"], textarea[placeholder*="mensaje"]').first();
+  const messageInput = page
+    .locator('input[type="text"][placeholder*="mensaje"], textarea[placeholder*="mensaje"]')
+    .first();
   await messageInput.fill(message);
-  
+
   // Find and click send button
   const sendButton = page.locator('button:has-text("Enviar"), button[type="submit"]').first();
   await sendButton.click();
@@ -77,7 +86,11 @@ export async function sendMessage(page: Page, message: string): Promise<void> {
 /**
  * Waits for a message to appear in the chat.
  */
-export async function waitForMessage(page: Page, messageText: string, timeout = 10000): Promise<void> {
+export async function waitForMessage(
+  page: Page,
+  messageText: string,
+  timeout = 10000
+): Promise<void> {
   await page.waitForSelector(`text=${messageText}`, { timeout });
 }
 
@@ -86,11 +99,12 @@ export async function waitForMessage(page: Page, messageText: string, timeout = 
  */
 export async function endSession(page: Page): Promise<void> {
   // Find end session button (usually "Siguiente" or "Terminar")
-  const endButton = page.locator('button:has-text("Siguiente"), button:has-text("Terminar"), button:has-text("End")').first();
+  const endButton = page
+    .locator('button:has-text("Siguiente"), button:has-text("Terminar"), button:has-text("End")')
+    .first();
   if (await endButton.isVisible({ timeout: 2000 }).catch(() => false)) {
     await endButton.click();
     // Wait for return to videochat page
     await page.waitForURL('/videochat', { timeout: 10000 });
   }
 }
-

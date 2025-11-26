@@ -28,4 +28,3 @@ export function useWebRTCConfig(): RTCIceServer[] {
 
   return iceServers;
 }
-

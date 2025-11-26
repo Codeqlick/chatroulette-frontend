@@ -7,11 +7,35 @@ const RATE_LIMIT_COOLDOWN_MS = 13000; // 13 seconds between offers (5 per minute
 
 export interface UseWebRTCSignalingReturn {
   sendOffer: (offer: RTCSessionDescriptionInit, peerConnection: RTCPeerConnection) => Promise<void>;
-  sendAnswer: (answer: RTCSessionDescriptionInit, sessionId: string, peerConnection: RTCPeerConnection) => Promise<void>;
+  sendAnswer: (
+    answer: RTCSessionDescriptionInit,
+    sessionId: string,
+    peerConnection: RTCPeerConnection
+  ) => Promise<void>;
   sendIceCandidate: (candidate: RTCIceCandidate, sessionId: string) => void;
-  handleOffer: (offer: RTCSessionDescriptionInit, sessionId: string, peerConnection: RTCPeerConnection, localStream: MediaStream | null, setLocalStream: (stream: MediaStream) => void, processPendingIceCandidates: () => Promise<void>, setError: (error: Error) => void) => Promise<void>;
-  handleAnswer: (answer: RTCSessionDescriptionInit, sessionId: string, peerConnection: RTCPeerConnection, processPendingIceCandidates: () => Promise<void>, setError: (error: Error) => void) => Promise<void>;
-  handleIceCandidate: (candidate: RTCIceCandidateInit, sessionId: string, peerConnection: RTCPeerConnection, processPendingIceCandidates: () => Promise<void>, setError: (error: Error) => void) => Promise<void>;
+  handleOffer: (
+    offer: RTCSessionDescriptionInit,
+    sessionId: string,
+    peerConnection: RTCPeerConnection,
+    localStream: MediaStream | null,
+    setLocalStream: (stream: MediaStream) => void,
+    processPendingIceCandidates: () => Promise<void>,
+    setError: (error: Error) => void
+  ) => Promise<void>;
+  handleAnswer: (
+    answer: RTCSessionDescriptionInit,
+    sessionId: string,
+    peerConnection: RTCPeerConnection,
+    processPendingIceCandidates: () => Promise<void>,
+    setError: (error: Error) => void
+  ) => Promise<void>;
+  handleIceCandidate: (
+    candidate: RTCIceCandidateInit,
+    sessionId: string,
+    peerConnection: RTCPeerConnection,
+    processPendingIceCandidates: () => Promise<void>,
+    setError: (error: Error) => void
+  ) => Promise<void>;
   processPendingIceCandidates: (peerConnection: RTCPeerConnection) => Promise<void>;
   pendingIceCandidates: React.MutableRefObject<RTCIceCandidateInit[]>;
 }
@@ -148,7 +172,11 @@ export function useWebRTCSignaling(sessionId: string | null): UseWebRTCSignaling
 
           if (attempt < API_CONSTANTS.WEBRTC_RETRY_MAX_ATTEMPTS - 1) {
             const delay = calculateBackoffDelay(attempt);
-            logger.debug(`Retrying answer in ${delay}ms...`, { sessionId: targetSessionId, attempt, delay });
+            logger.debug(`Retrying answer in ${delay}ms...`, {
+              sessionId: targetSessionId,
+              attempt,
+              delay,
+            });
             answerRetryAttemptsRef.current = attempt + 1;
 
             await new Promise((resolve) => setTimeout(resolve, delay));
@@ -176,7 +204,9 @@ export function useWebRTCSignaling(sessionId: string | null): UseWebRTCSignaling
       }
 
       if (!webSocketService.isConnected()) {
-        logger.warn('Socket not connected, cannot send ICE candidate', { sessionId: targetSessionId });
+        logger.warn('Socket not connected, cannot send ICE candidate', {
+          sessionId: targetSessionId,
+        });
         return;
       }
 
@@ -371,7 +401,10 @@ export function useWebRTCSignaling(sessionId: string | null): UseWebRTCSignaling
       logger.debug('handleAnswer called', { sessionId: targetSessionId });
 
       if (targetSessionId !== sessionId) {
-        logger.warn('Answer sessionId mismatch', { received: targetSessionId, expected: sessionId });
+        logger.warn('Answer sessionId mismatch', {
+          received: targetSessionId,
+          expected: sessionId,
+        });
         return;
       }
 
@@ -470,4 +503,3 @@ export function useWebRTCSignaling(sessionId: string | null): UseWebRTCSignaling
     pendingIceCandidates: pendingIceCandidatesRef,
   };
 }
-

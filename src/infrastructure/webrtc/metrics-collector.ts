@@ -184,8 +184,12 @@ export class WebRTCMetricsCollector {
         candidatePair = entry as RTCCandidatePairStats;
         // Check if using relay (TURN)
         if (entry.localCandidateId && entry.remoteCandidateId) {
-          const localCandidate = stats.get(entry.localCandidateId) as unknown as RTCStatsReportEntry;
-          const remoteCandidate = stats.get(entry.remoteCandidateId) as unknown as RTCStatsReportEntry;
+          const localCandidate = stats.get(
+            entry.localCandidateId
+          ) as unknown as RTCStatsReportEntry;
+          const remoteCandidate = stats.get(
+            entry.remoteCandidateId
+          ) as unknown as RTCStatsReportEntry;
           if (
             localCandidate?.candidateType === 'relay' ||
             remoteCandidate?.candidateType === 'relay'
@@ -346,4 +350,3 @@ export class WebRTCMetricsCollector {
     }
   }
 }
-

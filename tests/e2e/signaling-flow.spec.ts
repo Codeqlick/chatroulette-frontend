@@ -1,7 +1,19 @@
 import { test, expect } from '@playwright/test';
-import { mockMediaDevices, waitForWebRTCConnection, waitForVideoStream } from './fixtures/webrtc-helpers';
-import { generateTestUser, registerUser, loginUser, waitForAuthentication } from './fixtures/auth-helpers';
-import { waitForVideochatReady, startMatching, waitForMatch, sendMessage, waitForMessage, endSession } from './fixtures/matching-helpers';
+import { mockMediaDevices } from './fixtures/webrtc-helpers';
+import {
+  generateTestUser,
+  registerUser,
+  loginUser,
+  waitForAuthentication,
+} from './fixtures/auth-helpers';
+import {
+  waitForVideochatReady,
+  startMatching,
+  waitForMatch,
+  sendMessage,
+  waitForMessage,
+  endSession,
+} from './fixtures/matching-helpers';
 
 /**
  * E2E tests for complete signaling flow: registro → login → videochat → mensajes → WebRTC
@@ -13,12 +25,13 @@ test.describe('Complete Signaling Flow', () => {
   });
 
   test('complete flow: register → login → videochat → messages → WebRTC', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     // Create two browser contexts for two users
     const user1Context = await browser.newContext();
     const user2Context = await browser.newContext();
-    
+
     const user1Page = await user1Context.newPage();
     const user2Page = await user2Context.newPage();
 
@@ -80,7 +93,7 @@ test.describe('Complete Signaling Flow', () => {
       // Wait for video streams to be active
       const video1 = user1Page.locator('video').first();
       const video2 = user2Page.locator('video').first();
-      
+
       await expect(video1).toBeVisible({ timeout: 10000 });
       await expect(video2).toBeVisible({ timeout: 10000 });
 
@@ -98,12 +111,13 @@ test.describe('Complete Signaling Flow', () => {
   });
 
   test('login → videochat → match → messages → WebRTC', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     // Create two browser contexts for two users
     const user1Context = await browser.newContext();
     const user2Context = await browser.newContext();
-    
+
     const user1Page = await user1Context.newPage();
     const user2Page = await user2Context.newPage();
 
@@ -169,11 +183,12 @@ test.describe('Complete Signaling Flow', () => {
     }
   });
 
-  test('rate limiting on video:offer events', async ({ browser, context }) => {
+  test('rate limiting on video:offer events', async ({ context }) => {
     const page = await context.newPage();
     await mockMediaDevices(page);
 
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
     await page.goto(baseURL);
     await page.waitForLoadState('networkidle');
 
@@ -194,11 +209,11 @@ test.describe('Complete Signaling Flow', () => {
 
     // Start matching to establish connection
     await startMatching(page);
-    
+
     // Note: Rate limiting test requires a match to be found first
     // The actual rate limiting happens server-side, so we can only verify
     // that offers are being sent and monitor for any error messages
-    
+
     // Wait a bit to see if multiple offers are sent
     await page.waitForTimeout(5000);
 
@@ -207,11 +222,12 @@ test.describe('Complete Signaling Flow', () => {
     await context.close();
   });
 
-  test('handles signaling errors gracefully', async ({ browser, context }) => {
+  test('handles signaling errors gracefully', async ({ context }) => {
     const page = await context.newPage();
     await mockMediaDevices(page);
 
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
     await page.goto(baseURL);
     await page.waitForLoadState('networkidle');
 
@@ -239,4 +255,3 @@ test.describe('Complete Signaling Flow', () => {
     await context.close();
   });
 });
-

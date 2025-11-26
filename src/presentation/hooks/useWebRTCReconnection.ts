@@ -10,7 +10,12 @@ export interface UseWebRTCReconnectionReturn {
     sessionId: string,
     iceServers: RTCIceServer[],
     localStream: MediaStream | null,
-    createPeerConnection: (iceServers: RTCIceServer[], sessionId: string, onRemoteStream: (stream: MediaStream) => void, onIceCandidate: (candidate: RTCIceCandidate) => void) => RTCPeerConnection,
+    createPeerConnection: (
+      iceServers: RTCIceServer[],
+      sessionId: string,
+      onRemoteStream: (stream: MediaStream) => void,
+      onIceCandidate: (candidate: RTCIceCandidate) => void
+    ) => RTCPeerConnection,
     startVideo: () => Promise<void>,
     setRemoteStream: (stream: MediaStream) => void,
     sendIceCandidate: (candidate: RTCIceCandidate, targetSessionId: string) => void,
@@ -130,4 +135,3 @@ export function useWebRTCReconnection(): UseWebRTCReconnectionReturn {
     resetReconnectionAttempts,
   };
 }
-

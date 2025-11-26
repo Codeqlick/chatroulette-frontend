@@ -9,7 +9,10 @@ export interface UseMediaStreamReturn {
   localStreamRef: React.MutableRefObject<MediaStream | null>;
   setLocalStream: (stream: MediaStream | null) => void;
   setRemoteStream: (stream: MediaStream | null) => void;
-  startLocalVideo: (selectedVideoDeviceId: string | null, selectedAudioDeviceId: string | null) => Promise<void>;
+  startLocalVideo: (
+    selectedVideoDeviceId: string | null,
+    selectedAudioDeviceId: string | null
+  ) => Promise<void>;
   stopVideo: () => void;
   toggleVideo: (stream: MediaStream | null) => Promise<void>;
   toggleAudio: (stream: MediaStream | null) => Promise<void>;
@@ -55,7 +58,10 @@ export function useMediaStream(): UseMediaStreamReturn {
   }, [remoteStream]);
 
   const startLocalVideo = useCallback(
-    async (selectedVideoDeviceId: string | null, selectedAudioDeviceId: string | null): Promise<void> => {
+    async (
+      selectedVideoDeviceId: string | null,
+      selectedAudioDeviceId: string | null
+    ): Promise<void> => {
       // Prevent multiple simultaneous calls
       if (isStartingVideoRef.current) {
         logger.debug('Already starting video, skipping duplicate call');
@@ -136,4 +142,3 @@ export function useMediaStream(): UseMediaStreamReturn {
     isAudioEnabled,
   };
 }
-

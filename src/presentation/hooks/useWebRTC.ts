@@ -349,7 +349,9 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
           connectionState: peerConnectionRef.current.connectionState,
           iceConnectionState: peerConnectionRef.current.iceConnectionState,
         });
-        setError(new Error('La conexión tardó demasiado en establecerse. Por favor, intenta nuevamente.'));
+        setError(
+          new Error('La conexión tardó demasiado en establecerse. Por favor, intenta nuevamente.')
+        );
         setConnectionState('failed');
         // Close the connection
         peerConnectionRef.current.close();
@@ -364,7 +366,9 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
           connectionState: peerConnectionRef.current.connectionState,
           iceConnectionState: peerConnectionRef.current.iceConnectionState,
         });
-        setError(new Error('La conexión tardó demasiado en establecerse. Por favor, intenta nuevamente.'));
+        setError(
+          new Error('La conexión tardó demasiado en establecerse. Por favor, intenta nuevamente.')
+        );
         setConnectionState('failed');
         peerConnectionRef.current.close();
         peerConnectionRef.current = null;
@@ -1484,8 +1488,8 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
     // Handle connection change (if available)
     const handleConnectionChange = (): void => {
       // Check if connection API is available
-      const connection = (navigator as { connection?: { type?: string; effectiveType?: string } })
-        .connection ||
+      const connection =
+        (navigator as { connection?: { type?: string; effectiveType?: string } }).connection ||
         (navigator as { mozConnection?: { type?: string } }).mozConnection ||
         (navigator as { webkitConnection?: { type?: string } }).webkitConnection;
 
@@ -1511,12 +1515,22 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
     window.addEventListener('offline', handleOffline);
 
     // Add connection change listener if available
-    const connection = (navigator as { connection?: { addEventListener?: (event: string, handler: () => void) => void } })
-      .connection ||
-      (navigator as { mozConnection?: { addEventListener?: (event: string, handler: () => void) => void } })
-        .mozConnection ||
-      (navigator as { webkitConnection?: { addEventListener?: (event: string, handler: () => void) => void } })
-        .webkitConnection;
+    const connection =
+      (
+        navigator as {
+          connection?: { addEventListener?: (event: string, handler: () => void) => void };
+        }
+      ).connection ||
+      (
+        navigator as {
+          mozConnection?: { addEventListener?: (event: string, handler: () => void) => void };
+        }
+      ).mozConnection ||
+      (
+        navigator as {
+          webkitConnection?: { addEventListener?: (event: string, handler: () => void) => void };
+        }
+      ).webkitConnection;
 
     if (connection && typeof connection.addEventListener === 'function') {
       connection.addEventListener('change', handleConnectionChange);

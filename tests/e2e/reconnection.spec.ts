@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForWebRTCConnection, getConnectionState, getICEConnectionState, mockMediaDevices, waitForVideoStream } from './fixtures/webrtc-helpers';
+import { mockMediaDevices } from './fixtures/webrtc-helpers';
 import { generateTestUser, registerUser, waitForAuthentication } from './fixtures/auth-helpers';
 import { waitForVideochatReady, startMatching, waitForMatch } from './fixtures/matching-helpers';
 
@@ -13,8 +13,9 @@ test.describe('WebRTC Reconnection', () => {
   });
 
   test('reconnects WebSocket after disconnection', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     const context = await browser.newContext();
     const page = await context.newPage();
 
@@ -53,12 +54,13 @@ test.describe('WebRTC Reconnection', () => {
   });
 
   test('reconnects WebRTC after connection failure', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     // Create two contexts for two users
     const user1Context = await browser.newContext();
     const user2Context = await browser.newContext();
-    
+
     const user1Page = await user1Context.newPage();
     const user2Page = await user2Context.newPage();
 
@@ -108,8 +110,9 @@ test.describe('WebRTC Reconnection', () => {
   });
 
   test('recovers active session after page reload', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     const context = await browser.newContext();
     const page = await context.newPage();
 
@@ -128,29 +131,36 @@ test.describe('WebRTC Reconnection', () => {
       await waitForMatch(page, 60000);
 
       // Verify session is active (chat window visible)
-      await page.waitForSelector('input[type="text"][placeholder*="mensaje"], textarea[placeholder*="mensaje"]', {
-        timeout: 10000,
-      });
+      await page.waitForSelector(
+        'input[type="text"][placeholder*="mensaje"], textarea[placeholder*="mensaje"]',
+        {
+          timeout: 10000,
+        }
+      );
 
       // Reload page
       await page.reload();
       await page.waitForLoadState('networkidle');
 
       // Wait for session to be recovered (should still show chat window)
-      await page.waitForSelector('input[type="text"][placeholder*="mensaje"], textarea[placeholder*="mensaje"]', {
-        timeout: 10000,
-      });
+      await page.waitForSelector(
+        'input[type="text"][placeholder*="mensaje"], textarea[placeholder*="mensaje"]',
+        {
+          timeout: 10000,
+        }
+      );
     } finally {
       await context.close();
     }
   });
 
   test('handles reconnection during active chat', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     const user1Context = await browser.newContext();
     const user2Context = await browser.newContext();
-    
+
     const user1Page = await user1Context.newPage();
     const user2Page = await user2Context.newPage();
 
@@ -177,9 +187,13 @@ test.describe('WebRTC Reconnection', () => {
       await waitForMatch(user2Page, 60000);
 
       // Send a message
-      const messageInput1 = user1Page.locator('input[type="text"][placeholder*="mensaje"], textarea[placeholder*="mensaje"]').first();
+      const messageInput1 = user1Page
+        .locator('input[type="text"][placeholder*="mensaje"], textarea[placeholder*="mensaje"]')
+        .first();
       await messageInput1.fill('Test message');
-      const sendButton1 = user1Page.locator('button:has-text("Enviar"), button[type="submit"]').first();
+      const sendButton1 = user1Page
+        .locator('button:has-text("Enviar"), button[type="submit"]')
+        .first();
       await sendButton1.click();
 
       // Disconnect user1's network
@@ -199,8 +213,9 @@ test.describe('WebRTC Reconnection', () => {
   });
 
   test('reconnection with exponential backoff', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     const context = await browser.newContext();
     const page = await context.newPage();
 
@@ -231,4 +246,3 @@ test.describe('WebRTC Reconnection', () => {
     }
   });
 });
-

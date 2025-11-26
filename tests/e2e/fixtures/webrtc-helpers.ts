@@ -1,4 +1,4 @@
-import { Page, expect } from '@playwright/test';
+import { Page } from '@playwright/test';
 
 /**
  * Helper functions for WebRTC E2E tests.
@@ -22,7 +22,11 @@ export async function waitForWebRTCConnection(page: Page, timeout = 30000): Prom
 /**
  * Waits for video element to have a stream.
  */
-export async function waitForVideoStream(page: Page, selector: string, timeout = 30000): Promise<void> {
+export async function waitForVideoStream(
+  page: Page,
+  selector: string,
+  timeout = 30000
+): Promise<void> {
   await page.waitForFunction(
     (sel: string) => {
       const video = document.querySelector(sel) as HTMLVideoElement | null;
@@ -75,7 +79,6 @@ export async function getICEConnectionState(page: Page): Promise<string | null> 
 export async function mockMediaDevices(page: Page): Promise<void> {
   await page.addInitScript(() => {
     // Mock getUserMedia to return a fake stream
-    const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
 
     navigator.mediaDevices.getUserMedia = async (constraints?: MediaStreamConstraints) => {
       // Create a canvas-based video stream
@@ -110,4 +113,3 @@ export async function mockMediaDevices(page: Page): Promise<void> {
     };
   });
 }
-

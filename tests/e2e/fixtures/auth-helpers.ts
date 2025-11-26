@@ -1,4 +1,4 @@
-import { Page, expect } from '@playwright/test';
+import { Page } from '@playwright/test';
 
 /**
  * Helper functions for authentication E2E tests.
@@ -95,11 +95,12 @@ export async function isAuthenticated(page: Page): Promise<boolean> {
 export async function logoutUser(page: Page): Promise<void> {
   // Find and click logout button (usually in header/menu)
   // This depends on the UI structure
-  const logoutButton = page.locator('button:has-text("Cerrar Sesión"), button:has-text("Logout")').first();
+  const logoutButton = page
+    .locator('button:has-text("Cerrar Sesión"), button:has-text("Logout")')
+    .first();
   if (await logoutButton.isVisible({ timeout: 2000 }).catch(() => false)) {
     await logoutButton.click();
     // Wait for redirect to landing/login page
     await page.waitForURL(/\/(login|landing)/, { timeout: 5000 });
   }
 }
-

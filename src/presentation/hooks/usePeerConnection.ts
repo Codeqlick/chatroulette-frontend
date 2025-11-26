@@ -11,7 +11,12 @@ export interface UsePeerConnectionReturn {
   connectionQuality: ConnectionQuality | null;
   setConnectionState: (state: ConnectionState) => void;
   setConnectionQuality: (quality: ConnectionQuality | null) => void;
-  createPeerConnection: (iceServers: RTCIceServer[], sessionId: string, onRemoteStream: (stream: MediaStream) => void, onIceCandidate: (candidate: RTCIceCandidate) => void) => RTCPeerConnection;
+  createPeerConnection: (
+    iceServers: RTCIceServer[],
+    sessionId: string,
+    onRemoteStream: (stream: MediaStream) => void,
+    onIceCandidate: (candidate: RTCIceCandidate) => void
+  ) => RTCPeerConnection;
   cleanup: () => void;
 }
 
@@ -22,6 +27,7 @@ export interface UsePeerConnectionReturn {
 export function usePeerConnection(sessionId: string | null): UsePeerConnectionReturn {
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [connectionQuality, setConnectionQuality] = useState<ConnectionQuality | null>(null);
+  const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const metricsCollectorRef = useRef<WebRTCMetricsCollector | null>(null);
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -63,8 +69,9 @@ export function usePeerConnection(sessionId: string | null): UsePeerConnectionRe
         iceCandidatePoolSize: 10, // Pre-gather ICE candidates
       };
 
-      const peerConnection = new RTCPeerConnection(configuration);
-      peerConnectionRef.current = peerConnection;
+      const newPeerConnection = new RTCPeerConnection(configuration);
+      peerConnectionRef.current = newPeerConnection;
+      setPeerConnection(newPeerConnection);
 
       // Set connection timeout - if connection doesn't establish in 30s, fail it
       connectionTimeoutRef.current = setTimeout(() => {
@@ -100,7 +107,7 @@ export function usePeerConnection(sessionId: string | null): UsePeerConnectionRe
       // Start metrics collector
       const metricsCollector = new WebRTCMetricsCollector({
         sessionId,
-        peerConnection,
+        peerConnection: newPeerConnection,
         collectIntervalMs: 5000, // Collect every 5 seconds
         sendIntervalMs: 10000, // Send batch every 10 seconds
       });
@@ -108,7 +115,7 @@ export function usePeerConnection(sessionId: string | null): UsePeerConnectionRe
       metricsCollector.start();
 
       // Handle remote stream
-      peerConnection.ontrack = (event) => {
+      newPeerConnection.ontrack = (event) => {
         logger.debug('Remote track received', { sessionId, event });
         if (event.streams[0]) {
           logger.debug('Setting remote stream', { sessionId });
@@ -117,7 +124,7 @@ export function usePeerConnection(sessionId: string | null): UsePeerConnectionRe
       };
 
       // Handle ICE candidates
-      peerConnection.onicecandidate = (event) => {
+      newPeerConnection.onicecandidate = (event) => {
         if (event.candidate && sessionId) {
           logger.debug('ICE candidate generated', {
             candidate: event.candidate.candidate,
@@ -130,8 +137,8 @@ export function usePeerConnection(sessionId: string | null): UsePeerConnectionRe
       };
 
       // Handle connection state changes
-      peerConnection.onconnectionstatechange = () => {
-        const state = peerConnection.connectionState;
+      newPeerConnection.onconnectionstatechange = () => {
+        const state = newPeerConnection.connectionState;
         logger.debug('Connection state changed', { sessionId, state });
 
         // Map WebRTC connection state to our ConnectionState
@@ -166,8 +173,8 @@ export function usePeerConnection(sessionId: string | null): UsePeerConnectionRe
       };
 
       // Handle ICE connection state changes and quality
-      peerConnection.oniceconnectionstatechange = () => {
-        const state = peerConnection.iceConnectionState;
+      newPeerConnection.oniceconnectionstatechange = () => {
+        const state = newPeerConnection.iceConnectionState;
         logger.debug('ICE connection state changed', { sessionId, state });
 
         // Determine connection quality based on ICE connection state
@@ -178,7 +185,7 @@ export function usePeerConnection(sessionId: string | null): UsePeerConnectionRe
           case 'checking':
           case 'completed':
             // Check stats to determine quality
-            peerConnection.getStats().then((stats) => {
+            newPeerConnection.getStats().then((stats) => {
               let hasVideo = false;
               let hasAudio = false;
               let totalBytesReceived = 0;
@@ -219,7 +226,7 @@ export function usePeerConnection(sessionId: string | null): UsePeerConnectionRe
         }
       };
 
-      return peerConnection;
+      return newPeerConnection;
     },
     []
   );
@@ -237,6 +244,7 @@ export function usePeerConnection(sessionId: string | null): UsePeerConnectionRe
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
     }
+    setPeerConnection(null);
     setConnectionState('disconnected');
     setConnectionQuality(null);
   }, []);
@@ -250,7 +258,7 @@ export function usePeerConnection(sessionId: string | null): UsePeerConnectionRe
   }, [sessionId, cleanup]);
 
   return {
-    peerConnection: peerConnectionRef.current,
+    peerConnection,
     connectionState,
     connectionQuality,
     setConnectionState,
@@ -259,4 +267,3 @@ export function usePeerConnection(sessionId: string | null): UsePeerConnectionRe
     cleanup,
   };
 }
-

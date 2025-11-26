@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { waitForWebRTCConnection, waitForVideoStream, mockMediaDevices, getConnectionState, getICEConnectionState, isUsingTURN } from './fixtures/webrtc-helpers';
-import { generateTestUser, registerUser, waitForAuthentication } from './fixtures/auth-helpers';
+import {
+  mockMediaDevices,
+  getICEConnectionState,
+  getConnectionState,
+} from './fixtures/webrtc-helpers';
+import { generateTestUser, registerUser } from './fixtures/auth-helpers';
 import { waitForVideochatReady, startMatching, waitForMatch } from './fixtures/matching-helpers';
 
 /**
@@ -19,8 +23,9 @@ test.describe('WebRTC Flow', () => {
   });
 
   test('establishes WebRTC P2P connection', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     // Create two browser contexts (simulating two users)
     const user1Context = await browser.newContext();
     const user2Context = await browser.newContext();
@@ -70,7 +75,7 @@ test.describe('WebRTC Flow', () => {
       // Verify connection state (should be 'connected' or 'connecting')
       const connectionState1 = await getConnectionState(user1Page);
       const connectionState2 = await getConnectionState(user2Page);
-      
+
       // Connection state might be 'connecting' initially, but should eventually be 'connected'
       expect(['connected', 'connecting']).toContain(connectionState1);
       expect(['connected', 'connecting']).toContain(connectionState2);
@@ -81,12 +86,13 @@ test.describe('WebRTC Flow', () => {
   });
 
   test('handles TURN fallback when P2P fails', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     // This test verifies that TURN servers are used when P2P fails
     // In a real scenario, this would require network conditions that prevent P2P
     // For now, we verify that the connection is established (which may use TURN)
-    
+
     const user1Context = await browser.newContext();
     const user2Context = await browser.newContext();
 
@@ -130,8 +136,9 @@ test.describe('WebRTC Flow', () => {
   });
 
   test('changes video device during chat', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     const user1Context = await browser.newContext();
     const user1Page = await user1Context.newPage();
 
@@ -152,7 +159,7 @@ test.describe('WebRTC Flow', () => {
       // Find device selection menu/button (if available in UI)
       // This test verifies that device change functionality exists
       // The actual implementation depends on UI structure
-      
+
       // For now, verify that video is still working after potential device change
       const video = user1Page.locator('video').first();
       await expect(video).toBeVisible({ timeout: 10000 });
@@ -162,8 +169,9 @@ test.describe('WebRTC Flow', () => {
   });
 
   test('toggles video and audio during chat', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     const user1Context = await browser.newContext();
     const user2Context = await browser.newContext();
 
@@ -197,8 +205,12 @@ test.describe('WebRTC Flow', () => {
 
       // Find toggle buttons (video and audio)
       // These are typically in the chat window controls
-      const videoToggle1 = user1Page.locator('button:has-text("📹"), button[title*="video" i]').first();
-      const audioToggle1 = user1Page.locator('button:has-text("🎤"), button[title*="audio" i]').first();
+      const videoToggle1 = user1Page
+        .locator('button:has-text("📹"), button[title*="video" i]')
+        .first();
+      const audioToggle1 = user1Page
+        .locator('button:has-text("🎤"), button[title*="audio" i]')
+        .first();
 
       // Toggle video off and on
       if (await videoToggle1.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -224,11 +236,12 @@ test.describe('WebRTC Flow', () => {
   });
 
   test('handles connection timeout (30s)', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     // This test verifies that timeout is handled when connection doesn't establish
     // In a real scenario, this might require simulating network conditions
-    
+
     const user1Context = await browser.newContext();
     const user1Page = await user1Context.newPage();
 
@@ -259,8 +272,9 @@ test.describe('WebRTC Flow', () => {
   });
 
   test('performs ICE restart on network change', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     const user1Context = await browser.newContext();
     const user2Context = await browser.newContext();
 
@@ -292,8 +306,8 @@ test.describe('WebRTC Flow', () => {
       await user1Page.waitForSelector('video', { timeout: 30000 });
       await user2Page.waitForSelector('video', { timeout: 30000 });
 
-      // Get initial ICE connection state
-      const initialICEState1 = await getICEConnectionState(user1Page);
+      // Get initial ICE connection state (for future use)
+      await getICEConnectionState(user1Page);
 
       // Simulate network change (offline then online)
       await user1Context.setOffline(true);
@@ -315,8 +329,9 @@ test.describe('WebRTC Flow', () => {
   });
 
   test('WebRTC offer/answer exchange', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     const user1Context = await browser.newContext();
     const user2Context = await browser.newContext();
 
@@ -382,7 +397,7 @@ test.describe('WebRTC Flow', () => {
       // Verify that offer/answer exchange occurred (at least one offer and one answer)
       // Note: Due to race conditions, either user1 or user2 might be the offerer
       await user1Page.waitForTimeout(2000); // Wait a bit for messages to be captured
-      
+
       const totalSignaling = user1Offers.length + user2Answers.length;
       // Should have at least one offer and one answer
       expect(totalSignaling).toBeGreaterThanOrEqual(2);
@@ -393,8 +408,9 @@ test.describe('WebRTC Flow', () => {
   });
 
   test('ICE candidates exchange', async ({ browser }) => {
-    const baseURL = (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
-    
+    const baseURL =
+      (process.env as { E2E_BASE_URL?: string }).E2E_BASE_URL || 'http://localhost:5173';
+
     const user1Context = await browser.newContext();
     const user2Context = await browser.newContext();
 
@@ -458,4 +474,3 @@ test.describe('WebRTC Flow', () => {
     }
   });
 });
-
