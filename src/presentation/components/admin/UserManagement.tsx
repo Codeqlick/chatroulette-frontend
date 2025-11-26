@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { adminService, type UserListItem } from '@infrastructure/api/admin-service';
 import { Button } from '../Button';
 import { Avatar } from '../Avatar';
@@ -19,12 +19,7 @@ export function UserManagement(): JSX.Element {
   const [hasMore, setHasMore] = useState(false);
   const limit = 20;
 
-  useEffect(() => {
-    loadUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, searchTerm, filterBanned, filterVerified, filterRole]);
-
-  const loadUsers = async (): Promise<void> => {
+  const loadUsers = useCallback(async (): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -45,7 +40,11 @@ export function UserManagement(): JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, searchTerm, filterBanned, filterVerified, filterRole]);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
 
   const handleSearch = (value: string): void => {
     setSearchTerm(value);

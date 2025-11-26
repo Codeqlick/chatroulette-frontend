@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { adminService, type ActiveSession } from '@infrastructure/api/admin-service';
 import { Button } from '../Button';
 import { Avatar } from '../Avatar';
@@ -28,15 +28,7 @@ export function ActiveSessions(): JSX.Element {
   });
   const limit = 20;
 
-  useEffect(() => {
-    loadSessions();
-    // Refresh every 10 seconds
-    const interval = setInterval(loadSessions, 10000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage]);
-
-  const loadSessions = async (): Promise<void> => {
+  const loadSessions = useCallback(async (): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -53,7 +45,16 @@ export function ActiveSessions(): JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage]);
+
+  useEffect(() => {
+    void loadSessions();
+    // Refresh every 10 seconds
+    const interval = setInterval(() => {
+      void loadSessions();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [loadSessions]);
 
   const handleEndSessionClick = (sessionId: string): void => {
     setConfirmDialog({ isOpen: true, sessionId });

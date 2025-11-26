@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AxiosError } from 'axios';
 import { userService, PublicUserProfile, UserStats } from '@infrastructure/api/user-service';
@@ -25,59 +25,58 @@ export function ProfilePage(): JSX.Element {
   // Check if this is the current user's profile
   const isOwnProfile = currentUser?.username === username;
 
-  useEffect(() => {
+  const fetchProfile = useCallback(async (): Promise<void> => {
     if (!username) {
       navigate('/');
       return;
     }
 
-    const fetchProfile = async (): Promise<void> => {
-      try {
-        setLoading(true);
-        setError(null);
+    try {
+      setLoading(true);
+      setError(null);
 
-        const [profileData, statsData] = await Promise.all([
-          userService.getPublicProfile(username).catch((err: AxiosError) => {
-            logger.error('Error loading profile', { error: err, username });
-            if (err.response?.status === 401) {
-              setError('Debes iniciar sesión para ver perfiles');
-            } else if (err.response?.status === 404) {
-              setError('Usuario no encontrado');
-            } else if (err.response?.status === 403) {
-              setError('No tienes permisos para ver este perfil');
-            } else {
-              setError(
-                `Error al cargar el perfil (${err.response?.status || 'desconocido'}). Por favor, intenta nuevamente.`
-              );
-            }
-            return null;
-          }),
-          userService.getUserStats(username).catch((err: AxiosError) => {
-            logger.error('Error loading stats', { error: err, username });
-            // Stats are optional, don't set error for stats failure
-            return null;
-          }),
-        ]);
+      const [profileData, statsData] = await Promise.all([
+        userService.getPublicProfile(username).catch((err: AxiosError) => {
+          logger.error('Error loading profile', { error: err, username });
+          if (err.response?.status === 401) {
+            setError('Debes iniciar sesión para ver perfiles');
+          } else if (err.response?.status === 404) {
+            setError('Usuario no encontrado');
+          } else if (err.response?.status === 403) {
+            setError('No tienes permisos para ver este perfil');
+          } else {
+            setError(
+              `Error al cargar el perfil (${err.response?.status || 'desconocido'}). Por favor, intenta nuevamente.`
+            );
+          }
+          return null;
+        }),
+        userService.getUserStats(username).catch((err: AxiosError) => {
+          logger.error('Error loading stats', { error: err, username });
+          // Stats are optional, don't set error for stats failure
+          return null;
+        }),
+      ]);
 
-        if (profileData) {
-          setProfile(profileData);
-        }
-        if (statsData) {
-          setStats(statsData);
-        }
-      } catch (err: unknown) {
-        logger.error('Error fetching profile', { error: err, username });
-        if (!error) {
-          setError('Error al cargar el perfil');
-        }
-      } finally {
-        setLoading(false);
+      if (profileData) {
+        setProfile(profileData);
       }
-    };
+      if (statsData) {
+        setStats(statsData);
+      }
+    } catch (err: unknown) {
+      logger.error('Error fetching profile', { error: err, username });
+      if (!error) {
+        setError('Error al cargar el perfil');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [username, navigate, error]);
 
-    fetchProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username, navigate]);
+  useEffect(() => {
+    void fetchProfile();
+  }, [fetchProfile]);
 
   const handleShare = async (): Promise<void> => {
     try {

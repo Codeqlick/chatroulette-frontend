@@ -129,8 +129,7 @@ export function UserProfileModal({
         setError(profileError || 'No se pudo cargar la información del usuario');
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, partner?.username]);
+  }, [isOpen, partner]);
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>): void => {
     if (e.target === e.currentTarget) {

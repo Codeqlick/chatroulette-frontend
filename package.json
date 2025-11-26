@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --project tsconfig.build.json && vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "node scripts/test-ci.js",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",

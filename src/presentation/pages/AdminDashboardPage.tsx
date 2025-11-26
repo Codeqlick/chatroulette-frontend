@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@application/stores/auth-store';
 import { adminService, type AdminStats } from '@infrastructure/api/admin-service';
@@ -48,6 +48,42 @@ export function AdminDashboardPage(): JSX.Element {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
 
+  const loadReports = useCallback(async (): Promise<void> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await adminService.getPendingReports(50);
+      setReports(response.reports);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Error al cargar reportes. Intenta nuevamente.';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const loadStats = useCallback(async (): Promise<void> => {
+    try {
+      setIsLoadingStats(true);
+      const statsData = await adminService.getStats();
+      setStats(statsData);
+    } catch (err) {
+      logger.error('Error loading stats', { error: err });
+    } finally {
+      setIsLoadingStats(false);
+    }
+  }, []);
+
+  const loadData = useCallback(async (): Promise<void> => {
+    if (activeTab === 'pending-reports') {
+      await loadReports();
+    }
+    if (activeTab === 'dashboard') {
+      await Promise.all([loadReports(), loadStats()]);
+    }
+  }, [activeTab, loadReports, loadStats]);
+
   useEffect(() => {
     if (!isAuthenticated || !accessToken) {
       navigate('/login');
@@ -61,46 +97,9 @@ export function AdminDashboardPage(): JSX.Element {
     }
 
     if (activeTab === 'dashboard' || activeTab === 'pending-reports') {
-      loadData();
+      void loadData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, accessToken, user, navigate, activeTab]);
-
-  const loadData = async (): Promise<void> => {
-    if (activeTab === 'pending-reports') {
-      await loadReports();
-    }
-    if (activeTab === 'dashboard') {
-      await Promise.all([loadReports(), loadStats()]);
-    }
-  };
-
-  const loadReports = async (): Promise<void> => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await adminService.getPendingReports(50);
-      setReports(response.reports);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Error al cargar reportes. Intenta nuevamente.';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadStats = async (): Promise<void> => {
-    try {
-      setIsLoadingStats(true);
-      const statsData = await adminService.getStats();
-      setStats(statsData);
-    } catch (err) {
-      logger.error('Error loading stats', { error: err });
-    } finally {
-      setIsLoadingStats(false);
-    }
-  };
+  }, [isAuthenticated, accessToken, user, navigate, activeTab, loadData]);
 
   const handleReviewReport = async (
     reportId: string,

@@ -39,6 +39,22 @@ export default tseslint.config(
   },
   prettier,
   {
+    files: ['scripts/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      sourceType: 'module',
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+      },
+    },
+    rules: {
+      'no-undef': 'off',
+    },
+  },
+  {
     ignores: ['dist/**', 'node_modules/**', '*.config.js'],
   }
 );

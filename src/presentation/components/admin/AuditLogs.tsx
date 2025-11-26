@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { adminService, type AuditLog } from '@infrastructure/api/admin-service';
 import { Button } from '../Button';
 import { DocumentIcon, FunnelIcon, ClockIcon, UserIcon } from '../Icons';
@@ -13,12 +13,7 @@ export function AuditLogs(): JSX.Element {
   const [hasMore, setHasMore] = useState(false);
   const limit = 50;
 
-  useEffect(() => {
-    loadLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, filterEventType]);
-
-  const loadLogs = async (): Promise<void> => {
+  const loadLogs = useCallback(async (): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -36,7 +31,11 @@ export function AuditLogs(): JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, filterEventType]);
+
+  useEffect(() => {
+    void loadLogs();
+  }, [loadLogs]);
 
   const eventTypeLabels: Record<string, string> = {
     ADMIN_ACTION: 'Acción de Admin',

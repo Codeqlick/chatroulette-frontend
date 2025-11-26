@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { adminService, type AdvancedStats } from '@infrastructure/api/admin-service';
 import { ChartBarIcon, UsersIcon, WarningIcon, ChatIcon, DocumentIcon, ClockIcon } from '../Icons';
 
@@ -8,12 +8,7 @@ export function StatsCharts(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('week');
 
-  useEffect(() => {
-    loadStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period]);
-
-  const loadStats = async (): Promise<void> => {
+  const loadStats = useCallback(async (): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -25,7 +20,11 @@ export function StatsCharts(): JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [period]);
+
+  useEffect(() => {
+    void loadStats();
+  }, [loadStats]);
 
   if (isLoading) {
     return (

@@ -253,8 +253,8 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         logger.error('Error loading configuration, using defaults', { error, sessionId });
         // Keep default STUN servers as fallback
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // iceServers is set inside this effect, so including it would cause infinite loop
+  }, [sessionId]);
 
   // Update localStreamRef when localStream changes
   useEffect(() => {
@@ -955,8 +955,11 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         offerTimeoutRef.current = null;
       }
     };
+    // iceServers is used indirectly through attemptReconnection, but including it would cause
+    // the effect to re-run every time iceServers changes, which is not desired.
+    // The effect should only run when sessionId or sendAnswerWithRetry changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
+  }, [sessionId, sendAnswerWithRetry]);
 
   const startLocalVideo = useCallback(async (): Promise<void> => {
     // Prevent multiple simultaneous calls
@@ -1191,8 +1194,14 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
     } finally {
       isStartingVideoRef.current = false;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, localStream, roomReady, selectedVideoDeviceId, selectedAudioDeviceId]);
+  }, [
+    sessionId,
+    localStream,
+    roomReady,
+    selectedVideoDeviceId,
+    selectedAudioDeviceId,
+    sendOfferWithRetry,
+  ]);
 
   // Store startVideo in ref for reconnection
   useEffect(() => {

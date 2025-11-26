@@ -315,8 +315,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         stopVideoRef.current();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, addMessage, setTyping]);
+  }, [sessionId, addMessage, setTyping, updateMessage, showWarning, showError, setRoomReady]);
 
   // Keep messages ref updated
   useEffect(() => {
@@ -357,8 +356,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
       return () => clearTimeout(timer);
     }
     return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, roomReady, localStream]);
+  }, [sessionId, roomReady, localStream, startVideo]);
 
   // Close menu when clicking outside
   useEffect(() => {

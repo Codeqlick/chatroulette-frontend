@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { adminService, type UserDetails } from '@infrastructure/api/admin-service';
 import { Button } from '../Button';
 import { Avatar } from '../Avatar';
@@ -45,12 +45,7 @@ export function UserDetailsModal({
     variant: 'error',
   });
 
-  useEffect(() => {
-    loadUserDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
-
-  const loadUserDetails = async (): Promise<void> => {
+  const loadUserDetails = useCallback(async (): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -63,7 +58,11 @@ export function UserDetailsModal({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    void loadUserDetails();
+  }, [loadUserDetails]);
 
   const handleBanClick = (): void => {
     if (!banReason.trim()) {

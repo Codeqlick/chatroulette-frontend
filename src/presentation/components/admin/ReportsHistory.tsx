@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { adminService, type ReportHistoryItem } from '@infrastructure/api/admin-service';
 import { Button } from '../Button';
 import { Avatar } from '../Avatar';
@@ -15,12 +15,7 @@ export function ReportsHistory(): JSX.Element {
   const [hasMore, setHasMore] = useState(false);
   const limit = 20;
 
-  useEffect(() => {
-    loadReports();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, filterStatus, filterCategory]);
-
-  const loadReports = async (): Promise<void> => {
+  const loadReports = useCallback(async (): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -46,7 +41,11 @@ export function ReportsHistory(): JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, filterStatus, filterCategory]);
+
+  useEffect(() => {
+    void loadReports();
+  }, [loadReports]);
 
   const categoryLabels: Record<string, string> = {
     SPAM: 'Spam',
