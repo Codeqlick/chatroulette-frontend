@@ -3,6 +3,7 @@ import { WEBSOCKET_EVENTS, API_CONSTANTS } from '@config/constants';
 import { webSocketService } from '@infrastructure/websocket/websocket-service';
 import { webrtcService } from '@infrastructure/api/webrtc-service';
 import { logger } from '@infrastructure/logging/frontend-logger';
+import { WebRTCMetricsCollector } from '@infrastructure/webrtc/metrics-collector';
 import type { ConnectionState, ConnectionQuality } from '../components/ConnectionStatus';
 
 export interface MediaDevice {
@@ -89,13 +90,19 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
   ]);
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const metricsCollectorRef = useRef<WebRTCMetricsCollector | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const isStartingVideoRef = useRef<boolean>(false);
   const reconnectAttemptsRef = useRef<number>(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const startVideoRef = useRef<(() => Promise<void>) | null>(null);
+  const iceRestartTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastNetworkChangeRef = useRef<number>(0);
+  const WEBRTC_CONNECTION_TIMEOUT_MS = 30000; // 30 seconds
+  const ICE_RESTART_DELAY_MS = 2000; // Wait 2 seconds before ICE restart after network change
   const offerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const maxReconnectAttempts = 5;
@@ -277,6 +284,11 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       // When sessionId is null, keep local stream but clean up peer connection
       // This allows showing local video while searching for a match
       setRemoteStream(null);
+      // Stop metrics collector
+      if (metricsCollectorRef.current) {
+        void metricsCollectorRef.current.stop();
+        metricsCollectorRef.current = null;
+      }
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
         peerConnectionRef.current = null;
@@ -287,6 +299,16 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
     // Cleanup previous connection if exists
     const previousConnection = peerConnectionRef.current;
+    const previousCollector = metricsCollectorRef.current;
+    // Clear any existing connection timeout
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
+    }
+    if (previousCollector) {
+      void previousCollector.stop();
+      metricsCollectorRef.current = null;
+    }
     if (previousConnection) {
       previousConnection.close();
       peerConnectionRef.current = null;
@@ -314,6 +336,50 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
     const peerConnection = new RTCPeerConnection(configuration);
     peerConnectionRef.current = peerConnection;
+
+    // Set connection timeout - if connection doesn't establish in 30s, fail it
+    connectionTimeoutRef.current = setTimeout(() => {
+      if (
+        peerConnectionRef.current &&
+        peerConnectionRef.current.connectionState !== 'connected' &&
+        peerConnectionRef.current.connectionState !== 'connecting'
+      ) {
+        logger.warn('WebRTC connection timeout: connection not established within 30 seconds', {
+          sessionId,
+          connectionState: peerConnectionRef.current.connectionState,
+          iceConnectionState: peerConnectionRef.current.iceConnectionState,
+        });
+        setError(new Error('La conexión tardó demasiado en establecerse. Por favor, intenta nuevamente.'));
+        setConnectionState('failed');
+        // Close the connection
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      } else if (
+        peerConnectionRef.current &&
+        peerConnectionRef.current.connectionState === 'connecting'
+      ) {
+        // Still connecting after 30s - consider it a timeout
+        logger.warn('WebRTC connection timeout: still connecting after 30 seconds', {
+          sessionId,
+          connectionState: peerConnectionRef.current.connectionState,
+          iceConnectionState: peerConnectionRef.current.iceConnectionState,
+        });
+        setError(new Error('La conexión tardó demasiado en establecerse. Por favor, intenta nuevamente.'));
+        setConnectionState('failed');
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+    }, WEBRTC_CONNECTION_TIMEOUT_MS);
+
+    // Start metrics collector
+    const metricsCollector = new WebRTCMetricsCollector({
+      sessionId,
+      peerConnection,
+      collectIntervalMs: 5000, // Collect every 5 seconds
+      sendIntervalMs: 10000, // Send batch every 10 seconds
+    });
+    metricsCollectorRef.current = metricsCollector;
+    metricsCollector.start();
 
     // Handle remote stream
     peerConnection.ontrack = (event) => {
@@ -476,6 +542,11 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         case 'connected':
           setConnectionState('connected');
           reconnectAttemptsRef.current = 0; // Reset on successful connection
+          // Clear connection timeout
+          if (connectionTimeoutRef.current) {
+            clearTimeout(connectionTimeoutRef.current);
+            connectionTimeoutRef.current = null;
+          }
           // Clear any pending reconnect
           if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
@@ -498,6 +569,11 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         case 'closed':
           setConnectionState('failed');
           setError(new Error(`WebRTC connection ${state}`));
+          // Clear connection timeout
+          if (connectionTimeoutRef.current) {
+            clearTimeout(connectionTimeoutRef.current);
+            connectionTimeoutRef.current = null;
+          }
           // Attempt reconnection if we have a session
           if (sessionId && reconnectAttemptsRef.current < maxReconnectAttempts) {
             setTimeout(() => {
@@ -848,6 +924,11 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
     return () => {
       // Cleanup on unmount or sessionId change
+      if (metricsCollectorRef.current) {
+        logger.debug('Stopping metrics collector in cleanup', { sessionId });
+        void metricsCollectorRef.current.stop();
+        metricsCollectorRef.current = null;
+      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
@@ -1321,6 +1402,143 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       logger.error('Error refreshing devices', { error: err });
     });
   }, [refreshDevices]);
+
+  // ICE restart on network changes
+  useEffect(() => {
+    if (!sessionId || !peerConnectionRef.current) {
+      return;
+    }
+
+    const performIceRestart = async (): Promise<void> => {
+      const now = Date.now();
+      // Throttle ICE restarts - don't restart more than once every 5 seconds
+      if (now - lastNetworkChangeRef.current < 5000) {
+        logger.debug('ICE restart throttled', { sessionId });
+        return;
+      }
+      lastNetworkChangeRef.current = now;
+
+      const peerConnection = peerConnectionRef.current;
+      if (!peerConnection || peerConnection.connectionState === 'closed') {
+        return;
+      }
+
+      // Only restart if connection is active but having issues
+      if (
+        peerConnection.connectionState === 'connected' ||
+        peerConnection.connectionState === 'connecting'
+      ) {
+        logger.info('Performing ICE restart due to network change', {
+          sessionId,
+          connectionState: peerConnection.connectionState,
+          iceConnectionState: peerConnection.iceConnectionState,
+        });
+
+        try {
+          // Create new offer with iceRestart: true
+          const offer = await peerConnection.createOffer({ iceRestart: true });
+          await peerConnection.setLocalDescription(offer);
+
+          // Send offer via WebSocket
+          if (webSocketService.isConnected()) {
+            const offerPayload = {
+              sessionId,
+              offer: {
+                type: offer.type,
+                sdp: offer.sdp,
+              },
+            };
+            webSocketService.emit(WEBSOCKET_EVENTS.VIDEO_OFFER, offerPayload);
+            logger.debug('ICE restart offer sent', { sessionId });
+          } else {
+            logger.warn('Cannot send ICE restart offer: WebSocket not connected', { sessionId });
+          }
+        } catch (error) {
+          logger.error('Error performing ICE restart', { error, sessionId });
+        }
+      }
+    };
+
+    // Handle online/offline events
+    const handleOnline = (): void => {
+      logger.info('Network online event detected', { sessionId });
+      // Clear any existing timeout
+      if (iceRestartTimeoutRef.current) {
+        clearTimeout(iceRestartTimeoutRef.current);
+      }
+      // Wait a bit before restarting to ensure network is stable
+      iceRestartTimeoutRef.current = setTimeout(() => {
+        void performIceRestart();
+      }, ICE_RESTART_DELAY_MS);
+    };
+
+    const handleOffline = (): void => {
+      logger.info('Network offline event detected', { sessionId });
+      // Clear any pending restart
+      if (iceRestartTimeoutRef.current) {
+        clearTimeout(iceRestartTimeoutRef.current);
+        iceRestartTimeoutRef.current = null;
+      }
+    };
+
+    // Handle connection change (if available)
+    const handleConnectionChange = (): void => {
+      // Check if connection API is available
+      const connection = (navigator as { connection?: { type?: string; effectiveType?: string } })
+        .connection ||
+        (navigator as { mozConnection?: { type?: string } }).mozConnection ||
+        (navigator as { webkitConnection?: { type?: string } }).webkitConnection;
+
+      if (connection) {
+        logger.info('Network connection change detected', {
+          sessionId,
+          type: connection.type,
+          effectiveType: (connection as { effectiveType?: string }).effectiveType,
+        });
+        // Clear any existing timeout
+        if (iceRestartTimeoutRef.current) {
+          clearTimeout(iceRestartTimeoutRef.current);
+        }
+        // Wait a bit before restarting
+        iceRestartTimeoutRef.current = setTimeout(() => {
+          void performIceRestart();
+        }, ICE_RESTART_DELAY_MS);
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Add connection change listener if available
+    const connection = (navigator as { connection?: { addEventListener?: (event: string, handler: () => void) => void } })
+      .connection ||
+      (navigator as { mozConnection?: { addEventListener?: (event: string, handler: () => void) => void } })
+        .mozConnection ||
+      (navigator as { webkitConnection?: { addEventListener?: (event: string, handler: () => void) => void } })
+        .webkitConnection;
+
+    if (connection && typeof connection.addEventListener === 'function') {
+      connection.addEventListener('change', handleConnectionChange);
+    }
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      // Type assertion for connection API which may have removeEventListener
+      const connectionWithRemove = connection as {
+        removeEventListener?: (event: string, handler: () => void) => void;
+      };
+      if (connectionWithRemove && typeof connectionWithRemove.removeEventListener === 'function') {
+        connectionWithRemove.removeEventListener('change', handleConnectionChange);
+      }
+      if (iceRestartTimeoutRef.current) {
+        clearTimeout(iceRestartTimeoutRef.current);
+        iceRestartTimeoutRef.current = null;
+      }
+    };
+  }, [sessionId, iceServers]);
 
   return {
     localStream,
