@@ -90,7 +90,10 @@ interface ToastContainerProps {
   onRemove: (id: string) => void;
 }
 
-export const ToastContainer = memo(function ToastContainer({ toasts, onRemove }: ToastContainerProps): JSX.Element {
+export const ToastContainer = memo(function ToastContainer({
+  toasts,
+  onRemove,
+}: ToastContainerProps): JSX.Element {
   return (
     <div className="fixed top-4 right-4 z-[1000] flex flex-col gap-2">
       {toasts.map((toast) => (

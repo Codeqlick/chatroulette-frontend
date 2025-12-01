@@ -6,7 +6,12 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string;
 }
 
-export const Input = memo(function Input({ label, error, className = '', ...props }: InputProps): JSX.Element {
+export const Input = memo(function Input({
+  label,
+  error,
+  className = '',
+  ...props
+}: InputProps): JSX.Element {
   return (
     <div className="w-full">
       {label && (

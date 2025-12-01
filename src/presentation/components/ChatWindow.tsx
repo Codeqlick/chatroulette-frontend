@@ -25,7 +25,7 @@ interface ChatWindowProps {
 
 /**
  * Main chat window component that handles video/audio chat and text messaging.
- * 
+ *
  * This component manages:
  * - WebRTC video/audio connections via useWebRTC hook
  * - Real-time text messaging via WebSocket
@@ -35,10 +35,10 @@ interface ChatWindowProps {
  * - Like/unlike functionality
  * - Auto-scrolling to latest messages
  * - Auto-starting video when room is ready
- * 
+ *
  * The component uses multiple refs to avoid stale closures in event handlers
  * and to maintain state across re-renders without causing infinite loops.
- * 
+ *
  * @param sessionId - The current chat session ID
  * @param partner - The partner user's information (username, name, avatar)
  */
@@ -100,12 +100,12 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
 
   /**
    * Cleans up all WebRTC connections and media streams.
-   * 
+   *
    * This function:
    * - Stops all local and remote media tracks
    * - Clears video element sources
    * - Emits video end event via WebSocket
-   * 
+   *
    * Called when ending a session to ensure all resources are properly released.
    */
   const cleanupWebRTC = useCallback((): void => {
@@ -429,7 +429,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
 
   /**
    * Handles sending a text message.
-   * 
+   *
    * The message is sent via WebSocket and will be added to the UI when
    * we receive confirmation from the server (CHAT_MESSAGE_RECEIVED event).
    * This prevents duplicate messages if the event fires multiple times.
@@ -491,7 +491,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
 
   /**
    * Handles ending the current chat session.
-   * 
+   *
    * This function:
    * 1. Prevents multiple simultaneous calls (using ref flag)
    * 2. Cleans up WebRTC connections and media streams
@@ -499,7 +499,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
    * 4. Ends the session on the server (with timeout protection)
    * 5. Clears local session state
    * 6. Navigates back to videochat page
-   * 
+   *
    * The timeout prevents the UI from hanging if the server doesn't respond.
    */
   const handleEndSession = async (): Promise<void> => {

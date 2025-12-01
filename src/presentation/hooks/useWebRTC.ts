@@ -73,7 +73,7 @@ export interface UseWebRTCReturn {
 
 /**
  * Custom React hook for managing WebRTC peer-to-peer video/audio connections.
- * 
+ *
  * This hook handles:
  * - Creating and managing RTCPeerConnection instances
  * - Handling WebRTC signaling (offer/answer/ICE candidates) via WebSocket
@@ -82,10 +82,10 @@ export interface UseWebRTCReturn {
  * - Connection quality monitoring
  * - Device enumeration and selection
  * - Rate limiting for offer/answer to prevent server overload
- * 
+ *
  * The hook uses refs extensively to avoid stale closures in event handlers
  * and to maintain state across re-renders without causing infinite loops.
- * 
+ *
  * @param sessionId - The session ID for the current chat session, or null if not in a session
  * @returns UseWebRTCReturn object with all WebRTC state and control functions
  */
@@ -134,11 +134,11 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
   /**
    * Calculates exponential backoff delay for retry attempts.
-   * 
+   *
    * The delay doubles with each attempt (exponential backoff) to avoid
    * overwhelming the server with rapid retries while still attempting
    * to recover from transient failures.
-   * 
+   *
    * @param attempt - The current retry attempt number (0-indexed)
    * @returns The delay in milliseconds, capped at the maximum delay
    */
@@ -149,15 +149,15 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
   /**
    * Sends a WebRTC offer with retry logic and exponential backoff.
-   * 
+   *
    * This function implements:
    * - Rate limiting: Ensures at least 13 seconds between offers (server limit: 5/min)
    * - Retry logic: Automatically retries on failure with exponential backoff
    * - Error handling: Logs errors and resets retry counter on success
-   * 
+   *
    * The rate limiting prevents exceeding server limits and reduces unnecessary
    * network traffic during connection issues.
-   * 
+   *
    * @param offer - The RTCSessionDescriptionInit offer to send
    * @param attempt - The current retry attempt (defaults to 0 for first attempt)
    * @throws {Error} If session ID or peer connection is not available
@@ -228,10 +228,10 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
   /**
    * Sends a WebRTC answer with retry logic and exponential backoff.
-   * 
+   *
    * Similar to sendOfferWithRetry, but for answers. Answers are sent in response
    * to offers received from the remote peer.
-   * 
+   *
    * @param answer - The RTCSessionDescriptionInit answer to send
    * @param targetSessionId - The session ID to send the answer to
    * @param attempt - The current retry attempt (defaults to 0 for first attempt)
@@ -480,10 +480,10 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
     /**
      * Attempts to reconnect the WebRTC connection with exponential backoff.
-     * 
+     *
      * This function is called automatically when the connection fails or disconnects.
      * It recreates the peer connection and renegotiates the session.
-     * 
+     *
      * The exponential backoff prevents rapid reconnection attempts that could
      * overwhelm the server or user's network.
      */
@@ -725,14 +725,14 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
     /**
      * Handles incoming WebRTC offer from the remote peer.
-     * 
+     *
      * This function:
      * 1. Validates the offer data
      * 2. Checks signaling state to prevent race conditions
      * 3. Gets user media if not already available
      * 4. Sets remote description
      * 5. Creates and sends an answer
-     * 
+     *
      * Race condition prevention: If we already have a local offer, we ignore
      * the incoming offer to prevent both peers from trying to be the offerer.
      */
@@ -860,12 +860,12 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
     /**
      * Handles incoming WebRTC answer from the remote peer.
-     * 
+     *
      * This function:
      * 1. Validates the answer data
      * 2. Sets the remote description from the answer
      * 3. Processes any pending ICE candidates
-     * 
+     *
      * The answer is sent in response to our offer, completing the WebRTC negotiation.
      */
     const handleAnswer = async (...args: unknown[]): Promise<void> => {
@@ -913,7 +913,7 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
     /**
      * Processes the queue of pending ICE candidates.
-     * 
+     *
      * ICE candidates can arrive before the remote description is set.
      * This function processes all queued candidates once the remote description
      * is available, ensuring no candidates are lost during the negotiation phase.
@@ -951,10 +951,10 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
 
     /**
      * Handles incoming ICE candidate from the remote peer.
-     * 
+     *
      * ICE candidates are network paths discovered during WebRTC negotiation.
      * If the remote description isn't set yet, candidates are queued and processed later.
-     * 
+     *
      * This queuing mechanism prevents errors when candidates arrive before
      * the remote description is set (which can happen due to network timing).
      */
