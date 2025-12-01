@@ -1,23 +1,69 @@
 # Node
 node_modules
 npm-debug.log
+yarn-error.log
+package-lock.json.backup
 
 # Build outputs
 dist
 build
+*.tsbuildinfo
 
 # Environment files
 .env
 .env.local
 .env.*.local
+.env.production
+.env.backup
 
 # Tests
 coverage
+tests
+*.test.ts
+*.test.tsx
+*.test.js
+*.test.jsx
+*.spec.ts
+*.spec.tsx
+*.spec.js
+*.spec.jsx
+vitest.config.ts
+playwright.config.ts
 
 # IDE
 .vscode
 .idea
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+docs
+README.md
+CHANGELOG.md
+
+# Scripts de desarrollo
+scripts
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Otros
+.cache
+.temp
+tmp
+*.html
+!index.html
 

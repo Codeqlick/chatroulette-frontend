@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Avatar } from './Avatar';
 import { ConnectionStatus, type ConnectionState, type ConnectionQuality } from './ConnectionStatus';
 
@@ -14,7 +15,7 @@ interface UserProfileCardProps {
   className?: string | undefined;
 }
 
-export function UserProfileCard({
+export const UserProfileCard = memo(function UserProfileCard({
   name,
   username,
   avatar,
@@ -87,4 +88,4 @@ export function UserProfileCard({
       </div>
     </div>
   );
-}
+});

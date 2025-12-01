@@ -246,7 +246,7 @@ export function UserDetailsModal({
                 <label className="text-sm font-semibold text-gray-600 dark:text-gray-400">
                   Estado
                 </label>
-                <div className="mt-1 flex gap-2">
+                <div className="mt-1 flex gap-2 items-center">
                   {userDetails.user.isBanned && (
                     <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded text-sm font-semibold">
                       Baneado

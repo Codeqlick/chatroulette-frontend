@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 
 export type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'failed';
 export type ConnectionQuality = 'good' | 'medium' | 'poor';
@@ -9,7 +9,7 @@ interface ConnectionStatusProps {
   className?: string | undefined;
 }
 
-export function ConnectionStatus({
+export const ConnectionStatus = memo(function ConnectionStatus({
   state,
   quality,
   className = '',
@@ -147,4 +147,4 @@ export function ConnectionStatus({
       </span>
     </div>
   );
-}
+});

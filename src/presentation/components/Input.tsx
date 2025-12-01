@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { InputHTMLAttributes } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -5,7 +6,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string;
 }
 
-export function Input({ label, error, className = '', ...props }: InputProps): JSX.Element {
+export const Input = memo(function Input({ label, error, className = '', ...props }: InputProps): JSX.Element {
   return (
     <div className="w-full">
       {label && (
@@ -22,4 +23,4 @@ export function Input({ label, error, className = '', ...props }: InputProps): J
       {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
     </div>
   );
-}
+});

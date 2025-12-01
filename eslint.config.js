@@ -55,6 +55,11 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/**', 'node_modules/**', '*.config.js'],
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      '*.config.js',
+      '**/*.html', // Ignore all HTML files (including generated stats.html)
+    ],
   }
 );

@@ -71,6 +71,24 @@ export interface UseWebRTCReturn {
   error: Error | null;
 }
 
+/**
+ * Custom React hook for managing WebRTC peer-to-peer video/audio connections.
+ * 
+ * This hook handles:
+ * - Creating and managing RTCPeerConnection instances
+ * - Handling WebRTC signaling (offer/answer/ICE candidates) via WebSocket
+ * - Managing local and remote media streams
+ * - Automatic reconnection with exponential backoff
+ * - Connection quality monitoring
+ * - Device enumeration and selection
+ * - Rate limiting for offer/answer to prevent server overload
+ * 
+ * The hook uses refs extensively to avoid stale closures in event handlers
+ * and to maintain state across re-renders without causing infinite loops.
+ * 
+ * @param sessionId - The session ID for the current chat session, or null if not in a session
+ * @returns UseWebRTCReturn object with all WebRTC state and control functions
+ */
 export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -83,8 +101,9 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
   const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState<string | null>(null);
   const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState<string | null>(null);
   const [roomReady, setRoomReady] = useState(false);
+  // ICE servers are loaded from backend, but we use Google STUN as fallback
+  // This ensures connectivity even if backend config hasn't loaded yet
   const [iceServers, setIceServers] = useState<RTCIceServer[]>([
-    // Fallback por defecto mientras carga la configuración
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
   ]);
@@ -109,10 +128,19 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
   const offerRetryAttemptsRef = useRef<number>(0);
   const answerRetryAttemptsRef = useRef<number>(0);
   const lastOfferTimeRef = useRef<number>(0);
-  const RATE_LIMIT_COOLDOWN_MS = 13000; // 13 segundos entre ofertas (5 por minuto = 12s mínimo, agregamos 1s de margen)
+  // Rate limiting: Server allows 5 offers per minute (12s minimum between offers)
+  // We add 1s margin to account for network latency and timing variations
+  const RATE_LIMIT_COOLDOWN_MS = 13000;
 
   /**
-   * Calculate exponential backoff delay
+   * Calculates exponential backoff delay for retry attempts.
+   * 
+   * The delay doubles with each attempt (exponential backoff) to avoid
+   * overwhelming the server with rapid retries while still attempting
+   * to recover from transient failures.
+   * 
+   * @param attempt - The current retry attempt number (0-indexed)
+   * @returns The delay in milliseconds, capped at the maximum delay
    */
   const calculateBackoffDelay = useCallback((attempt: number): number => {
     const delay = API_CONSTANTS.WEBRTC_RETRY_INITIAL_DELAY_MS * Math.pow(2, attempt);
@@ -120,8 +148,20 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
   }, []);
 
   /**
-   * Send offer with retry logic and exponential backoff
-   * Includes rate limiting to prevent exceeding server limits (5 offers per minute)
+   * Sends a WebRTC offer with retry logic and exponential backoff.
+   * 
+   * This function implements:
+   * - Rate limiting: Ensures at least 13 seconds between offers (server limit: 5/min)
+   * - Retry logic: Automatically retries on failure with exponential backoff
+   * - Error handling: Logs errors and resets retry counter on success
+   * 
+   * The rate limiting prevents exceeding server limits and reduces unnecessary
+   * network traffic during connection issues.
+   * 
+   * @param offer - The RTCSessionDescriptionInit offer to send
+   * @param attempt - The current retry attempt (defaults to 0 for first attempt)
+   * @throws {Error} If session ID or peer connection is not available
+   * @throws {Error} If WebSocket is not connected
    */
   const sendOfferWithRetry = useCallback(
     async (offer: RTCSessionDescriptionInit, attempt: number = 0): Promise<void> => {
@@ -133,7 +173,8 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
         throw new Error('WebSocket not connected');
       }
 
-      // Rate limiting: Check if enough time has passed since last offer
+      // Rate limiting: Ensure we don't exceed server limit of 5 offers per minute
+      // Only apply rate limiting on the first attempt (not retries)
       const now = Date.now();
       const timeSinceLastOffer = now - lastOfferTimeRef.current;
 
@@ -186,7 +227,16 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
   );
 
   /**
-   * Send answer with retry logic and exponential backoff
+   * Sends a WebRTC answer with retry logic and exponential backoff.
+   * 
+   * Similar to sendOfferWithRetry, but for answers. Answers are sent in response
+   * to offers received from the remote peer.
+   * 
+   * @param answer - The RTCSessionDescriptionInit answer to send
+   * @param targetSessionId - The session ID to send the answer to
+   * @param attempt - The current retry attempt (defaults to 0 for first attempt)
+   * @throws {Error} If peer connection is not available
+   * @throws {Error} If WebSocket is not connected
    */
   const sendAnswerWithRetry = useCallback(
     async (
@@ -318,26 +368,28 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
     setRemoteStream(null);
     setError(null);
 
-    // Create RTCPeerConnection with optimized configuration from backend
+    // Create RTCPeerConnection with optimized configuration
+    // These settings reduce connection setup time and improve reliability
     const configuration: RTCConfiguration = {
       iceServers:
         iceServers.length > 0
           ? iceServers
           : [
-              // Fallback si aún no se ha cargado la configuración
+              // Fallback STUN servers if backend config hasn't loaded yet
               { urls: 'stun:stun.l.google.com:19302' },
               { urls: 'stun:stun1.l.google.com:19302' },
             ],
-      // Optimize connection configuration
-      bundlePolicy: 'max-bundle', // Reduce number of transports
-      rtcpMuxPolicy: 'require', // Require RTCP multiplexing
-      iceCandidatePoolSize: 10, // Pre-gather ICE candidates
+      // Optimize connection configuration for faster setup and better performance
+      bundlePolicy: 'max-bundle', // Reduce number of transports (saves resources)
+      rtcpMuxPolicy: 'require', // Require RTCP multiplexing (reduces ports needed)
+      iceCandidatePoolSize: 10, // Pre-gather ICE candidates (faster connection)
     };
 
     const peerConnection = new RTCPeerConnection(configuration);
     peerConnectionRef.current = peerConnection;
 
-    // Set connection timeout - if connection doesn't establish in 30s, fail it
+    // Set connection timeout: if connection doesn't establish in 30s, fail it
+    // This prevents users from waiting indefinitely when connection is impossible
     connectionTimeoutRef.current = setTimeout(() => {
       if (
         peerConnectionRef.current &&
@@ -426,7 +478,15 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       }
     };
 
-    // Reconnection function with exponential backoff
+    /**
+     * Attempts to reconnect the WebRTC connection with exponential backoff.
+     * 
+     * This function is called automatically when the connection fails or disconnects.
+     * It recreates the peer connection and renegotiates the session.
+     * 
+     * The exponential backoff prevents rapid reconnection attempts that could
+     * overwhelm the server or user's network.
+     */
     const attemptReconnection = (): void => {
       if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
         logger.warn('Max reconnection attempts reached', {
@@ -438,7 +498,8 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       }
 
       reconnectAttemptsRef.current += 1;
-      const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current - 1), 30000); // Max 30s
+      // Exponential backoff: 1s, 2s, 4s, 8s, 16s, capped at 30s
+      const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current - 1), 30000);
 
       logger.info(
         `Attempting reconnection ${reconnectAttemptsRef.current}/${maxReconnectAttempts}`,
@@ -662,7 +723,19 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       }
     };
 
-    // Listen for WebRTC events
+    /**
+     * Handles incoming WebRTC offer from the remote peer.
+     * 
+     * This function:
+     * 1. Validates the offer data
+     * 2. Checks signaling state to prevent race conditions
+     * 3. Gets user media if not already available
+     * 4. Sets remote description
+     * 5. Creates and sends an answer
+     * 
+     * Race condition prevention: If we already have a local offer, we ignore
+     * the incoming offer to prevent both peers from trying to be the offerer.
+     */
     const handleOffer = async (...args: unknown[]): Promise<void> => {
       logger.debug('handleOffer called', { sessionId, argsCount: args.length });
       const data = args[0] as {
@@ -690,7 +763,9 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       try {
         const peerConnection = peerConnectionRef.current;
 
-        // Check signaling state - if we already have a local offer, we're in a race condition
+        // Check signaling state to prevent race conditions
+        // If we already have a local offer, both peers tried to be the offerer
+        // In this case, we ignore the incoming offer and wait for our offer to be answered
         const signalingState = peerConnection.signalingState;
         logger.debug('Current signaling state', { sessionId, signalingState });
 
@@ -744,13 +819,14 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
           }
         }
 
-        // Verify signaling state is still stable before setting remote description
+        // Double-check signaling state before setting remote description
+        // The state might have changed during async operations (e.g., getting user media)
         if (peerConnection.signalingState !== 'stable') {
           logger.warn('Signaling state changed during setup', {
             sessionId,
             currentState: peerConnection.signalingState,
           });
-          // If we have a local offer, we should not process this remote offer
+          // If we now have a local offer (race condition), don't process this remote offer
           if (peerConnection.signalingState === 'have-local-offer') {
             logger.warn('Skipping remote offer, we already sent our offer', { sessionId });
             return;
@@ -782,6 +858,16 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       }
     };
 
+    /**
+     * Handles incoming WebRTC answer from the remote peer.
+     * 
+     * This function:
+     * 1. Validates the answer data
+     * 2. Sets the remote description from the answer
+     * 3. Processes any pending ICE candidates
+     * 
+     * The answer is sent in response to our offer, completing the WebRTC negotiation.
+     */
     const handleAnswer = async (...args: unknown[]): Promise<void> => {
       logger.debug('handleAnswer called', { sessionId, argsCount: args.length });
       const data = args[0] as {
@@ -826,7 +912,11 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
     };
 
     /**
-     * Process pending ICE candidates queue
+     * Processes the queue of pending ICE candidates.
+     * 
+     * ICE candidates can arrive before the remote description is set.
+     * This function processes all queued candidates once the remote description
+     * is available, ensuring no candidates are lost during the negotiation phase.
      */
     const processPendingIceCandidates = async (): Promise<void> => {
       if (!peerConnectionRef.current || pendingIceCandidatesRef.current.length === 0) {
@@ -859,6 +949,15 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       }
     };
 
+    /**
+     * Handles incoming ICE candidate from the remote peer.
+     * 
+     * ICE candidates are network paths discovered during WebRTC negotiation.
+     * If the remote description isn't set yet, candidates are queued and processed later.
+     * 
+     * This queuing mechanism prevents errors when candidates arrive before
+     * the remote description is set (which can happen due to network timing).
+     */
     const handleIceCandidate = async (...args: unknown[]): Promise<void> => {
       const data = args[0] as {
         sessionId: string;
@@ -884,10 +983,12 @@ export function useWebRTC(sessionId: string | null): UseWebRTCReturn {
       }
 
       // Check if remote description is set
+      // ICE candidates can only be added after remote description is set
       const remoteDescription = peerConnectionRef.current.remoteDescription;
 
       if (!remoteDescription) {
-        // Remote description not set yet, queue the candidate
+        // Remote description not set yet, queue the candidate for later processing
+        // This prevents errors when candidates arrive before the offer/answer exchange completes
         logger.debug('Remote description not set, queueing ICE candidate', { sessionId });
         pendingIceCandidatesRef.current.push(data.candidate);
         return;

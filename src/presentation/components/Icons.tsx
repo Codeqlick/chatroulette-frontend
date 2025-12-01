@@ -1,9 +1,11 @@
+import { memo } from 'react';
+
 interface IconProps {
   className?: string;
   size?: number;
 }
 
-export function DashboardIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const DashboardIcon = memo(function DashboardIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -22,9 +24,9 @@ export function DashboardIcon({ className = 'w-5 h-5', size }: IconProps): JSX.E
       />
     </svg>
   );
-}
+});
 
-export function WarningIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const WarningIcon = memo(function WarningIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -43,9 +45,9 @@ export function WarningIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Ele
       />
     </svg>
   );
-}
+});
 
-export function ClipboardIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const ClipboardIcon = memo(function ClipboardIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -64,9 +66,9 @@ export function ClipboardIcon({ className = 'w-5 h-5', size }: IconProps): JSX.E
       />
     </svg>
   );
-}
+});
 
-export function UsersIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const UsersIcon = memo(function UsersIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -85,9 +87,9 @@ export function UsersIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Eleme
       />
     </svg>
   );
-}
+});
 
-export function ChatIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const ChatIcon = memo(function ChatIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -106,9 +108,9 @@ export function ChatIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Elemen
       />
     </svg>
   );
-}
+});
 
-export function DocumentIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const DocumentIcon = memo(function DocumentIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -127,9 +129,9 @@ export function DocumentIcon({ className = 'w-5 h-5', size }: IconProps): JSX.El
       />
     </svg>
   );
-}
+});
 
-export function XMarkIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const XMarkIcon = memo(function XMarkIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -141,12 +143,12 @@ export function XMarkIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Eleme
       className={className}
       {...sizeAttr}
     >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"       />
     </svg>
   );
-}
+});
 
-export function UserIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const UserIcon = memo(function UserIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -165,9 +167,9 @@ export function UserIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Elemen
       />
     </svg>
   );
-}
+});
 
-export function MagnifyingGlassIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const MagnifyingGlassIcon = memo(function MagnifyingGlassIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -186,9 +188,9 @@ export function MagnifyingGlassIcon({ className = 'w-5 h-5', size }: IconProps):
       />
     </svg>
   );
-}
+});
 
-export function FunnelIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const FunnelIcon = memo(function FunnelIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -207,9 +209,9 @@ export function FunnelIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Elem
       />
     </svg>
   );
-}
+});
 
-export function ArrowLeftIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const ArrowLeftIcon = memo(function ArrowLeftIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -221,12 +223,12 @@ export function ArrowLeftIcon({ className = 'w-5 h-5', size }: IconProps): JSX.E
       className={className}
       {...sizeAttr}
     >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"       />
     </svg>
   );
-}
+});
 
-export function ArrowRightIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const ArrowRightIcon = memo(function ArrowRightIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -238,12 +240,12 @@ export function ArrowRightIcon({ className = 'w-5 h-5', size }: IconProps): JSX.
       className={className}
       {...sizeAttr}
     >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"       />
     </svg>
   );
-}
+});
 
-export function CheckCircleIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const CheckCircleIcon = memo(function CheckCircleIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -262,9 +264,9 @@ export function CheckCircleIcon({ className = 'w-5 h-5', size }: IconProps): JSX
       />
     </svg>
   );
-}
+});
 
-export function XCircleIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const XCircleIcon = memo(function XCircleIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -283,9 +285,9 @@ export function XCircleIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Ele
       />
     </svg>
   );
-}
+});
 
-export function ClockIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const ClockIcon = memo(function ClockIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -304,9 +306,9 @@ export function ClockIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Eleme
       />
     </svg>
   );
-}
+});
 
-export function ChartBarIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const ChartBarIcon = memo(function ChartBarIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -325,9 +327,9 @@ export function ChartBarIcon({ className = 'w-5 h-5', size }: IconProps): JSX.El
       />
     </svg>
   );
-}
+});
 
-export function ArrowPathIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
+export const ArrowPathIcon = memo(function ArrowPathIcon({ className = 'w-5 h-5', size }: IconProps): JSX.Element {
   const sizeAttr = size ? { width: size, height: size } : {};
   return (
     <svg
@@ -346,4 +348,4 @@ export function ArrowPathIcon({ className = 'w-5 h-5', size }: IconProps): JSX.E
       />
     </svg>
   );
-}
+});

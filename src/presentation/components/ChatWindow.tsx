@@ -23,6 +23,25 @@ interface ChatWindowProps {
   partner: { username: string; name: string; avatar: string | null };
 }
 
+/**
+ * Main chat window component that handles video/audio chat and text messaging.
+ * 
+ * This component manages:
+ * - WebRTC video/audio connections via useWebRTC hook
+ * - Real-time text messaging via WebSocket
+ * - Message history loading and display
+ * - Typing indicators
+ * - Session management (end session, report user, block user)
+ * - Like/unlike functionality
+ * - Auto-scrolling to latest messages
+ * - Auto-starting video when room is ready
+ * 
+ * The component uses multiple refs to avoid stale closures in event handlers
+ * and to maintain state across re-renders without causing infinite loops.
+ * 
+ * @param sessionId - The current chat session ID
+ * @param partner - The partner user's information (username, name, avatar)
+ */
 export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element {
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -55,7 +74,8 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
     setLoadingMessages,
   } = useChatStore();
 
-  // Initialize messagesRef after messages is available, and keep it updated
+  // Keep a ref to messages for use in event handlers
+  // This prevents stale closures when messages change but handlers don't re-register
   const messagesRef = useRef(messages);
   const {
     localStream,
@@ -78,7 +98,16 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
     error: webRTCError,
   } = useWebRTC(sessionId);
 
-  // Cleanup function to stop all WebRTC connections and media
+  /**
+   * Cleans up all WebRTC connections and media streams.
+   * 
+   * This function:
+   * - Stops all local and remote media tracks
+   * - Clears video element sources
+   * - Emits video end event via WebSocket
+   * 
+   * Called when ending a session to ensure all resources are properly released.
+   */
   const cleanupWebRTC = useCallback((): void => {
     // Stop local stream tracks
     if (localStream) {
@@ -112,12 +141,14 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
     }
   }, [localStream, remoteStream, localVideoRef, remoteVideoRef, sessionId]);
 
-  // Store stopVideo in ref to avoid dependency issues
+  // Store stopVideo in ref to avoid dependency issues in cleanup functions
+  // This allows cleanup to call stopVideo without including it in dependency arrays
   useEffect(() => {
     stopVideoRef.current = stopVideo;
   }, [stopVideo]);
 
   // Load message history when component mounts or sessionId changes
+  // This ensures users see previous messages when entering a session
   useEffect(() => {
     const loadMessageHistory = async (): Promise<void> => {
       if (!sessionId) {
@@ -128,7 +159,8 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         setLoadingMessages(true);
         const response = await sessionService.getSessionMessages(sessionId, 50);
 
-        // Convert API messages to ChatMessage format
+        // Convert API messages to ChatMessage format expected by the store
+        // The API returns messages in a different format, so we transform them
         const chatMessages = response.messages.map((msg) => ({
           id: msg.id,
           sessionId: msg.sessionId,
@@ -143,6 +175,7 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         loadMessages(chatMessages);
 
         // Scroll to bottom after messages are loaded
+        // Small delay ensures DOM is updated before scrolling
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
@@ -192,14 +225,18 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
         timestamp: number;
       };
       if (data.sessionId === sessionId) {
-        // Check if message already exists by ID (most reliable) or by content/timestamp
+        // Deduplication: Check if message already exists
+        // We check by ID (most reliable) and by content/timestamp (fallback for edge cases)
+        // This prevents duplicate messages from being displayed
         const messageExistsById = messagesRef.current.some((msg) => msg.id === data.messageId);
 
+        // Fallback check: same content, same sender, within 2 seconds
+        // This handles edge cases where message ID might not match but it's the same message
         const messageExistsByContent = messagesRef.current.some(
           (msg) =>
             msg.content === data.message &&
             msg.senderId === data.senderId &&
-            Math.abs(msg.timestamp.getTime() - data.timestamp) < 2000 // Within 2 seconds
+            Math.abs(msg.timestamp.getTime() - data.timestamp) < 2000
         );
 
         if (!messageExistsById && !messageExistsByContent) {
@@ -334,12 +371,14 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
     return () => clearTimeout(timeoutId);
   }, [messages]);
 
-  // Auto-start video when room is ready and both users are in room
-  // Use a random delay to prevent both users from starting at the same time
+  // Auto-start video when room is ready and both users are in the room
+  // Uses a random delay to prevent both users from starting simultaneously
+  // This prevents race conditions where both peers try to be the offerer
   useEffect(() => {
     if (sessionId && !localStream && roomReady) {
-      // Random delay between 500ms and 2000ms to prevent race condition
-      // The user with shorter delay will start the offer, the other will wait for it
+      // Random delay between 500ms and 2000ms to randomize who becomes the offerer
+      // The user with shorter delay will create the offer, the other will wait for it
+      // This is a simple but effective way to prevent offer/answer race conditions
       const randomDelay = 500 + Math.random() * 1500;
       logger.debug(`Room ready, starting video in ${Math.round(randomDelay)}ms`, {
         sessionId,
@@ -388,6 +427,13 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
     };
   }, [isMenuOpen]);
 
+  /**
+   * Handles sending a text message.
+   * 
+   * The message is sent via WebSocket and will be added to the UI when
+   * we receive confirmation from the server (CHAT_MESSAGE_RECEIVED event).
+   * This prevents duplicate messages if the event fires multiple times.
+   */
   const handleSendMessage = (): void => {
     if (!message.trim() || message.length > API_CONSTANTS.MAX_MESSAGE_LENGTH) {
       return;
@@ -397,17 +443,18 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
     const timestamp = Date.now();
 
     // Emit message to server - don't add locally, wait for server confirmation
+    // This ensures the message appears only once, even if events fire multiple times
     webSocketService.emit(WEBSOCKET_EVENTS.CHAT_MESSAGE, {
       sessionId,
       message: messageContent,
       timestamp,
     });
 
-    // Clear input immediately for better UX
+    // Clear input immediately for better UX (optimistic UI update)
     setMessage('');
 
     // The message will be added when we receive CHAT_MESSAGE_RECEIVED from server
-    // This prevents duplicates
+    // This server-confirmed approach prevents duplicates and ensures consistency
   };
 
   const handleTyping = (): void => {
@@ -442,8 +489,21 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
     setIsMenuOpen(newState);
   };
 
+  /**
+   * Handles ending the current chat session.
+   * 
+   * This function:
+   * 1. Prevents multiple simultaneous calls (using ref flag)
+   * 2. Cleans up WebRTC connections and media streams
+   * 3. Stops any active matching
+   * 4. Ends the session on the server (with timeout protection)
+   * 5. Clears local session state
+   * 6. Navigates back to videochat page
+   * 
+   * The timeout prevents the UI from hanging if the server doesn't respond.
+   */
   const handleEndSession = async (): Promise<void> => {
-    // Prevent multiple simultaneous calls
+    // Prevent multiple simultaneous calls to avoid race conditions
     if (isEndingRef.current) {
       return;
     }
@@ -458,24 +518,25 @@ export function ChatWindow({ sessionId, partner }: ChatWindowProps): JSX.Element
       stopVideo();
 
       // Stop any active matching before ending session
+      // This ensures the user doesn't immediately get matched again
       try {
         const { matchingService } = await import('@infrastructure/api/matching-service');
         await matchingService.stop().catch((err) => {
           logger.warn('Error stopping matching', { error: err });
-          // Continue even if stopping matching fails
+          // Continue even if stopping matching fails - session ending is more important
         });
       } catch (err) {
         logger.warn('Error importing matching service', { error: err });
       }
 
-      // Add timeout for session ending request
+      // Add timeout for session ending request to prevent UI from hanging
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Timeout al terminar sesión')), 10000);
       });
 
       await Promise.race([sessionService.endSession(sessionId), timeoutPromise]);
 
-      // Clear session state
+      // Clear session state from store
       clearSession();
 
       // Navigate back to videochat page - this will trigger reconnection logic

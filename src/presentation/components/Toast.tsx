@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, memo } from 'react';
 
 interface ToastProps {
   message: string;
@@ -7,7 +7,7 @@ interface ToastProps {
   onClose: () => void;
 }
 
-export function Toast({
+export const Toast = memo(function Toast({
   message,
   type = 'info',
   duration = 5000,
@@ -83,14 +83,14 @@ export function Toast({
       </button>
     </div>
   );
-}
+});
 
 interface ToastContainerProps {
   toasts: Array<{ id: string; message: string; type?: 'success' | 'error' | 'info' | 'warning' }>;
   onRemove: (id: string) => void;
 }
 
-export function ToastContainer({ toasts, onRemove }: ToastContainerProps): JSX.Element {
+export const ToastContainer = memo(function ToastContainer({ toasts, onRemove }: ToastContainerProps): JSX.Element {
   return (
     <div className="fixed top-4 right-4 z-[1000] flex flex-col gap-2">
       {toasts.map((toast) => (
@@ -103,4 +103,4 @@ export function ToastContainer({ toasts, onRemove }: ToastContainerProps): JSX.E
       ))}
     </div>
   );
-}
+});

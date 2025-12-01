@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 interface AvatarProps {
   name: string;
   avatar?: string | null | undefined;
@@ -31,7 +33,7 @@ const ringColorClasses = {
   gray: 'ring-gray-400',
 };
 
-export function Avatar({
+export const Avatar = memo(function Avatar({
   name,
   avatar,
   size = 'md',
@@ -62,4 +64,4 @@ export function Avatar({
       {name[0]?.toUpperCase() || 'U'}
     </div>
   );
-}
+});

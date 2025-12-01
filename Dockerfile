@@ -42,14 +42,18 @@ RUN npm run build
 # Stage de producción con Nginx
 FROM nginx:alpine
 
-# Instalar wget para el healthcheck
-RUN apk add --no-cache wget
+# Instalar curl para el healthcheck (más ligero que wget y más común en contenedores)
+# Alternativamente, se puede usar el healthcheck de Docker sin herramientas externas
+RUN apk add --no-cache curl
 
 # Copiar archivos compilados
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copiar configuración de Nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Eliminar archivos innecesarios y limpiar cache
+RUN rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 # Exponer puerto
 EXPOSE 80

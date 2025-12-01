@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { ButtonHTMLAttributes } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -6,7 +7,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
 }
 
-export function Button({
+export const Button = memo(function Button({
   variant = 'primary',
   size = 'md',
   isLoading = false,
@@ -65,4 +66,4 @@ export function Button({
       )}
     </button>
   );
-}
+});
