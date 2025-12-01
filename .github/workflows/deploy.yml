@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 env:
   DEPLOY_PATH: ""
@@ -33,7 +34,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -113,11 +114,16 @@ jobs:
 
       - name: Deploy to OVH via SSH
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          COMPOSE_FILE: ${{ secrets.COMPOSE_FILE }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ env.SSH_HOST }}
           username: ${{ env.SSH_USER }}
           key: ${{ env.SSH_KEY }}
           port: ${{ env.SSH_PORT || 22 }}
+          envs: DEPLOY_PATH,COMPOSE_FILE,GITHUB_TOKEN
           script: |
             set -euo pipefail
             DEFAULT_COMPOSE_FILE="docker-compose.production.yml"
@@ -130,32 +136,57 @@ jobs:
             
             echo "📂 Deploy path: $DEPLOY_PATH"
             
-            # Create directory if it doesn't exist
-            if [ ! -d "$DEPLOY_PATH" ]; then
-              echo "⚠️  Directory $DEPLOY_PATH does not exist. Creating it..."
-              mkdir -p "$DEPLOY_PATH"
+            # Calculate project root (parent of frontend directory)
+            PROJECT_ROOT="$(dirname "$DEPLOY_PATH")"
+            echo "📁 Project root: $PROJECT_ROOT"
+            
+            # Create project root directory if it doesn't exist
+            if [ ! -d "$PROJECT_ROOT" ]; then
+              echo "⚠️  Project root directory $PROJECT_ROOT does not exist. Creating it..."
+              mkdir -p "$PROJECT_ROOT"
             fi
             
-            # Change to deploy directory
-            cd "$DEPLOY_PATH" || {
-              echo "❌ Error: Failed to change to directory $DEPLOY_PATH"
-              echo "Current directory: $(pwd)"
-              echo "Directory exists: $([ -d "$DEPLOY_PATH" ] && echo 'yes' || echo 'no')"
+            # Clone repository if it doesn't exist, or update if it does
+            cd "$PROJECT_ROOT" || {
+              echo "❌ Error: Failed to change to project root $PROJECT_ROOT"
               exit 1
             }
             
-            echo "✅ Successfully changed to $DEPLOY_PATH"
-            echo "📁 Current directory: $(pwd)"
-            echo "📋 Directory contents:"
-            ls -la || true
+            if [ ! -d ".git" ]; then
+              echo "📥 Repository not found. Cloning repository..."
+              # Get repository URL from GitHub context
+              # Use GitHub token for authentication if available
+              REPO_URL="https://github.com/${{ github.repository }}.git"
+              if [ -n "${GITHUB_TOKEN:-}" ]; then
+                REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+              fi
+              git clone --branch main --single-branch --depth 1 "$REPO_URL" .
+              echo "✅ Repository cloned successfully"
+            else
+              echo "📥 Pulling latest code from main branch..."
+              # Configure git remote if not exists
+              if ! git remote get-url origin > /dev/null 2>&1; then
+                git remote add origin "https://github.com/${{ github.repository }}.git"
+              fi
+              # Update remote URL with token if available
+              if [ -n "${GITHUB_TOKEN:-}" ]; then
+                git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+              fi
+              git fetch origin main
+              git reset --hard origin/main
+              git clean -fd
+            fi
             
+            # Verify docker-compose.production.yml exists in project root
             COMPOSE_PATH="${COMPOSE_FILE:-$DEFAULT_COMPOSE_FILE}"
+            if [ ! -f "$COMPOSE_PATH" ]; then
+              echo "❌ Error: $COMPOSE_PATH not found in $PROJECT_ROOT"
+              echo "📋 Available files in project root:"
+              ls -la || true
+              exit 1
+            fi
             
-            # Pull latest code
-            echo "📥 Pulling latest code from main branch..."
-            git fetch origin main
-            git reset --hard origin/main
-            git clean -fd
+            echo "✅ Found $COMPOSE_PATH in project root"
             
             # Deploy frontend
             echo "🔨 Building and deploying frontend..."
