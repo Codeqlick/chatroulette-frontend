@@ -43,6 +43,52 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Validate deployment secrets
+        run: |
+          echo "Validating deployment secrets..."
+          MISSING_SECRETS=()
+          
+          if [ -z "${{ secrets.SSH_HOST }}" ]; then
+            MISSING_SECRETS+=("SSH_HOST")
+          fi
+          if [ -z "${{ secrets.SSH_USER }}" ]; then
+            MISSING_SECRETS+=("SSH_USER")
+          fi
+          if [ -z "${{ secrets.SSH_KEY }}" ]; then
+            MISSING_SECRETS+=("SSH_KEY")
+          fi
+          if [ -z "${{ secrets.DEPLOY_PATH }}" ]; then
+            MISSING_SECRETS+=("DEPLOY_PATH")
+          fi
+          
+          if [ ${#MISSING_SECRETS[@]} -ne 0 ]; then
+            echo "❌ Error: The following required secrets are not configured:"
+            for MISSING in "${MISSING_SECRETS[@]}"; do
+              echo "  - $MISSING"
+            done
+            echo ""
+            echo "📝 Required secrets configuration:"
+            echo "  - SSH_HOST: IP or domain of your VPS"
+            echo "  - SSH_USER: SSH username (e.g., csadmin)"
+            echo "  - SSH_KEY: Complete SSH private key"
+            echo "  - DEPLOY_PATH: /srv/codeqlick/chatroulette/frontend"
+            echo ""
+            echo "Please configure them in GitHub Settings > Secrets and variables > Actions > Environment: production"
+            exit 1
+          fi
+          
+          # Validate DEPLOY_PATH format
+          DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+          if [[ ! "$DEPLOY_PATH" =~ ^/ ]]; then
+            echo "❌ Error: DEPLOY_PATH must be an absolute path (starting with /)"
+            echo "Current value: $DEPLOY_PATH"
+            echo "Expected: /srv/codeqlick/chatroulette/frontend"
+            exit 1
+          fi
+          
+          echo "✅ All required secrets are configured."
+          echo "📂 Deploy path: $DEPLOY_PATH"
+
       - name: Prepare deployment env
         shell: bash
         run: |
@@ -74,12 +120,49 @@ jobs:
           port: ${{ env.SSH_PORT || 22 }}
           script: |
             set -euo pipefail
-            cd "$DEPLOY_PATH"
+            DEFAULT_COMPOSE_FILE="docker-compose.production.yml"
+            
+            # Validate DEPLOY_PATH
+            if [ -z "${DEPLOY_PATH:-}" ]; then
+              echo "❌ Error: DEPLOY_PATH is not set or is empty"
+              exit 1
+            fi
+            
+            echo "📂 Deploy path: $DEPLOY_PATH"
+            
+            # Create directory if it doesn't exist
+            if [ ! -d "$DEPLOY_PATH" ]; then
+              echo "⚠️  Directory $DEPLOY_PATH does not exist. Creating it..."
+              mkdir -p "$DEPLOY_PATH"
+            fi
+            
+            # Change to deploy directory
+            cd "$DEPLOY_PATH" || {
+              echo "❌ Error: Failed to change to directory $DEPLOY_PATH"
+              echo "Current directory: $(pwd)"
+              echo "Directory exists: $([ -d "$DEPLOY_PATH" ] && echo 'yes' || echo 'no')"
+              exit 1
+            }
+            
+            echo "✅ Successfully changed to $DEPLOY_PATH"
+            echo "📁 Current directory: $(pwd)"
+            echo "📋 Directory contents:"
+            ls -la || true
+            
             COMPOSE_PATH="${COMPOSE_FILE:-$DEFAULT_COMPOSE_FILE}"
+            
+            # Pull latest code
+            echo "📥 Pulling latest code from main branch..."
             git fetch origin main
             git reset --hard origin/main
+            git clean -fd
+            
+            # Deploy frontend
+            echo "🔨 Building and deploying frontend..."
             docker compose -f "$COMPOSE_PATH" pull frontend || true
-            docker compose -f "$COMPOSE_PATH" build frontend
+            docker compose -f "$COMPOSE_PATH" build --no-cache frontend
             docker compose -f "$COMPOSE_PATH" up -d frontend
+            
+            echo "✅ Frontend deployment completed"
             docker compose -f "$COMPOSE_PATH" ps
 
