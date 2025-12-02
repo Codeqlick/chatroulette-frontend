@@ -208,10 +208,10 @@ jobs:
             
             # Deploy frontend
             echo "🔨 Building and deploying frontend..."
-            docker compose -f "$COMPOSE_PATH" pull frontend || true
-            docker compose -f "$COMPOSE_PATH" build --no-cache frontend
-            docker compose -f "$COMPOSE_PATH" up -d frontend
+            docker-compose -f "$COMPOSE_PATH" pull frontend || true
+            docker-compose -f "$COMPOSE_PATH" build --no-cache frontend
+            docker-compose -f "$COMPOSE_PATH" up -d frontend
             
             echo "✅ Frontend deployment completed"
-            docker compose -f "$COMPOSE_PATH" ps
+            docker-compose -f "$COMPOSE_PATH" ps
 
