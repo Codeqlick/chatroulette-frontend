@@ -152,18 +152,9 @@ jobs:
               exit 1
             }
             
-            if [ ! -d ".git" ]; then
-              echo "📥 Repository not found. Cloning repository..."
-              # Get repository URL from GitHub context
-              # Use GitHub token for authentication if available
-              REPO_URL="https://github.com/${{ github.repository }}.git"
-              if [ -n "${GITHUB_TOKEN:-}" ]; then
-                REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
-              fi
-              git clone --branch main --single-branch --depth 1 "$REPO_URL" .
-              echo "✅ Repository cloned successfully"
-            else
-              echo "📥 Pulling latest code from main branch..."
+            # Check if this is a valid git repository
+            if [ -d ".git" ] && git rev-parse --git-dir > /dev/null 2>&1; then
+              echo "📥 Valid git repository found. Pulling latest code from main branch..."
               # Configure git remote if not exists
               if ! git remote get-url origin > /dev/null 2>&1; then
                 git remote add origin "https://github.com/${{ github.repository }}.git"
@@ -175,6 +166,33 @@ jobs:
               git fetch origin main
               git reset --hard origin/main
               git clean -fd
+            else
+              echo "📥 Repository not found or invalid. Setting up repository..."
+              
+              # If directory exists but is not a git repo, initialize git in place
+              if [ "$(ls -A . 2>/dev/null)" ]; then
+                echo "⚠️  Directory exists but is not a git repository. Initializing git in place..."
+                git init
+                git remote add origin "https://github.com/${{ github.repository }}.git" 2>/dev/null || {
+                  git remote set-url origin "https://github.com/${{ github.repository }}.git"
+                }
+                if [ -n "${GITHUB_TOKEN:-}" ]; then
+                  git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+                fi
+                git fetch origin main
+                git reset --hard origin/main
+                git clean -fd
+                echo "✅ Repository initialized and updated"
+              else
+                # Directory is empty, clone fresh
+                echo "📥 Cloning repository into empty directory..."
+                REPO_URL="https://github.com/${{ github.repository }}.git"
+                if [ -n "${GITHUB_TOKEN:-}" ]; then
+                  REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+                fi
+                git clone --branch main --single-branch --depth 1 "$REPO_URL" .
+                echo "✅ Repository cloned successfully"
+              fi
             fi
             
             # Verify docker-compose.production.yml exists in project root
