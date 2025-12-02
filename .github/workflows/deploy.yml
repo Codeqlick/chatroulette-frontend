@@ -144,19 +144,29 @@ jobs:
             
             # Normalize DEPLOY_PATH to ensure correct structure
             # Expected: /srv/codeqlick/chatroulette/backend or /srv/codeqlick/chatroulette/frontend
-            # Handle case where DEPLOY_PATH might be /srv/codeqlick/frontend (incorrect)
-            if [[ "$DEPLOY_PATH" == "/srv/codeqlick/backend" ]]; then
-              echo "⚠️  Detected incorrect DEPLOY_PATH structure. Adjusting to correct path..."
-              DEPLOY_PATH="/srv/codeqlick/chatroulette/backend"
-            elif [[ "$DEPLOY_PATH" == "/srv/codeqlick/frontend" ]]; then
-              echo "⚠️  Detected incorrect DEPLOY_PATH structure. Adjusting to correct path..."
-              DEPLOY_PATH="/srv/codeqlick/chatroulette/frontend"
+            # Handle various incorrect formats and normalize them
+            ORIGINAL_DEPLOY_PATH="$DEPLOY_PATH"
+            
+            # Extract the component (backend or frontend) from the path
+            if [[ "$DEPLOY_PATH" =~ /(backend|frontend)$ ]]; then
+              COMPONENT="${BASH_REMATCH[1]}"
+              
+              # If path doesn't include /chatroulette/, normalize it
+              if [[ ! "$DEPLOY_PATH" =~ /chatroulette/ ]]; then
+                echo "⚠️  Detected DEPLOY_PATH without /chatroulette/. Normalizing to correct path..."
+                DEPLOY_PATH="/srv/codeqlick/chatroulette/$COMPONENT"
+                echo "📂 Normalized DEPLOY_PATH from $ORIGINAL_DEPLOY_PATH to $DEPLOY_PATH"
+              fi
+            else
+              echo "❌ Error: DEPLOY_PATH must end with /backend or /frontend"
+              echo "📂 Current DEPLOY_PATH: $DEPLOY_PATH"
+              exit 1
             fi
             
             echo "📂 Final deploy path: $DEPLOY_PATH"
             
-            # Validate DEPLOY_PATH structure
-            if [[ ! "$DEPLOY_PATH" =~ /chatroulette/(backend|frontend)$ ]]; then
+            # Final validation: ensure DEPLOY_PATH matches expected structure
+            if [[ ! "$DEPLOY_PATH" =~ ^/srv/codeqlick/chatroulette/(backend|frontend)$ ]]; then
               echo "❌ Error: DEPLOY_PATH must be /srv/codeqlick/chatroulette/backend or /srv/codeqlick/chatroulette/frontend"
               echo "📂 Current DEPLOY_PATH: $DEPLOY_PATH"
               echo "💡 Please update the DEPLOY_PATH secret in GitHub to: /srv/codeqlick/chatroulette/backend (for backend) or /srv/codeqlick/chatroulette/frontend (for frontend)"
