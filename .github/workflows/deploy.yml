@@ -140,38 +140,50 @@ jobs:
               exit 1
             fi
             
-            echo "📂 Deploy path (from secret): $DEPLOY_PATH"
+            # Determine component automatically from repository name or DEPLOY_PATH
+            # This allows the workflow to work even if DEPLOY_PATH secret is not configured correctly
+            COMPONENT=""
             
-            # Normalize DEPLOY_PATH to ensure correct structure
-            # Expected: /srv/codeqlick/chatroulette/backend or /srv/codeqlick/chatroulette/frontend
-            # Handle various incorrect formats and normalize them
-            ORIGINAL_DEPLOY_PATH="$DEPLOY_PATH"
-            
-            # Extract the component (backend or frontend) from the path
-            if [[ "$DEPLOY_PATH" =~ /(backend|frontend)$ ]]; then
+            # Try to extract component from DEPLOY_PATH first
+            if [[ -n "$DEPLOY_PATH" ]] && [[ "$DEPLOY_PATH" =~ /(backend|frontend)(/|$) ]]; then
               COMPONENT="${BASH_REMATCH[1]}"
-              
-              # If path doesn't include /chatroulette/, normalize it
-              if [[ ! "$DEPLOY_PATH" =~ /chatroulette/ ]]; then
-                echo "⚠️  Detected DEPLOY_PATH without /chatroulette/. Normalizing to correct path..."
-                DEPLOY_PATH="/srv/codeqlick/chatroulette/$COMPONENT"
-                echo "📂 Normalized DEPLOY_PATH from $ORIGINAL_DEPLOY_PATH to $DEPLOY_PATH"
+              echo "📂 Detected component '$COMPONENT' from DEPLOY_PATH: $DEPLOY_PATH"
+            fi
+            
+            # If component not found in DEPLOY_PATH, determine from repository name
+            if [[ -z "$COMPONENT" ]]; then
+              REPO_NAME="${GITHUB_REPOSITORY:-}"
+              if [[ "$REPO_NAME" =~ backend ]]; then
+                COMPONENT="backend"
+              elif [[ "$REPO_NAME" =~ frontend ]]; then
+                COMPONENT="frontend"
+              else
+                echo "❌ Error: Cannot determine component from repository name: $REPO_NAME"
+                echo "💡 Please configure DEPLOY_PATH secret to end with /backend or /frontend"
+                exit 1
               fi
+              echo "📂 Detected component '$COMPONENT' from repository name: $REPO_NAME"
+            fi
+            
+            # Build correct DEPLOY_PATH
+            EXPECTED_DEPLOY_PATH="/srv/codeqlick/chatroulette/$COMPONENT"
+            
+            # Use DEPLOY_PATH from secret if it's valid, otherwise use auto-detected path
+            if [[ -n "$DEPLOY_PATH" ]] && [[ "$DEPLOY_PATH" =~ ^/srv/codeqlick/chatroulette/(backend|frontend)$ ]]; then
+              echo "✅ Using DEPLOY_PATH from secret: $DEPLOY_PATH"
+            elif [[ -n "$DEPLOY_PATH" ]] && [[ "$DEPLOY_PATH" =~ /(backend|frontend)(/|$) ]]; then
+              # Normalize incorrect DEPLOY_PATH
+              echo "⚠️  DEPLOY_PATH from secret has incorrect format: $DEPLOY_PATH"
+              DEPLOY_PATH="$EXPECTED_DEPLOY_PATH"
+              echo "📂 Normalized to: $DEPLOY_PATH"
             else
-              echo "❌ Error: DEPLOY_PATH must end with /backend or /frontend"
-              echo "📂 Current DEPLOY_PATH: $DEPLOY_PATH"
-              exit 1
+              # Use auto-detected path
+              echo "⚠️  DEPLOY_PATH secret not configured or invalid. Using auto-detected path."
+              DEPLOY_PATH="$EXPECTED_DEPLOY_PATH"
+              echo "📂 Auto-detected DEPLOY_PATH: $DEPLOY_PATH"
             fi
             
             echo "📂 Final deploy path: $DEPLOY_PATH"
-            
-            # Final validation: ensure DEPLOY_PATH matches expected structure
-            if [[ ! "$DEPLOY_PATH" =~ ^/srv/codeqlick/chatroulette/(backend|frontend)$ ]]; then
-              echo "❌ Error: DEPLOY_PATH must be /srv/codeqlick/chatroulette/backend or /srv/codeqlick/chatroulette/frontend"
-              echo "📂 Current DEPLOY_PATH: $DEPLOY_PATH"
-              echo "💡 Please update the DEPLOY_PATH secret in GitHub to: /srv/codeqlick/chatroulette/backend (for backend) or /srv/codeqlick/chatroulette/frontend (for frontend)"
-              exit 1
-            fi
             
             # Calculate project root (parent of backend/frontend directory)
             # If DEPLOY_PATH is /srv/codeqlick/chatroulette/frontend, PROJECT_ROOT should be /srv/codeqlick/chatroulette
