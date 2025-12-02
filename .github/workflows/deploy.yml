@@ -140,22 +140,51 @@ jobs:
               exit 1
             fi
             
-            echo "📂 Deploy path: $DEPLOY_PATH"
+            echo "📂 Deploy path (from secret): $DEPLOY_PATH"
             
-            # Calculate project root (parent directory of frontend)
+            # Normalize DEPLOY_PATH to ensure correct structure
+            # Expected: /srv/codeqlick/chatroulette/backend or /srv/codeqlick/chatroulette/frontend
+            # Handle case where DEPLOY_PATH might be /srv/codeqlick/frontend (incorrect)
+            if [[ "$DEPLOY_PATH" == "/srv/codeqlick/backend" ]]; then
+              echo "⚠️  Detected incorrect DEPLOY_PATH structure. Adjusting to correct path..."
+              DEPLOY_PATH="/srv/codeqlick/chatroulette/backend"
+            elif [[ "$DEPLOY_PATH" == "/srv/codeqlick/frontend" ]]; then
+              echo "⚠️  Detected incorrect DEPLOY_PATH structure. Adjusting to correct path..."
+              DEPLOY_PATH="/srv/codeqlick/chatroulette/frontend"
+            fi
+            
+            echo "📂 Final deploy path: $DEPLOY_PATH"
+            
+            # Validate DEPLOY_PATH structure
+            if [[ ! "$DEPLOY_PATH" =~ /chatroulette/(backend|frontend)$ ]]; then
+              echo "❌ Error: DEPLOY_PATH must be /srv/codeqlick/chatroulette/backend or /srv/codeqlick/chatroulette/frontend"
+              echo "📂 Current DEPLOY_PATH: $DEPLOY_PATH"
+              echo "💡 Please update the DEPLOY_PATH secret in GitHub to: /srv/codeqlick/chatroulette/backend (for backend) or /srv/codeqlick/chatroulette/frontend (for frontend)"
+              exit 1
+            fi
+            
+            # Calculate project root (parent of backend/frontend directory)
+            # If DEPLOY_PATH is /srv/codeqlick/chatroulette/frontend, PROJECT_ROOT should be /srv/codeqlick/chatroulette
             PROJECT_ROOT="$(dirname "$DEPLOY_PATH")"
             echo "📁 Project root: $PROJECT_ROOT"
             
-            # Create deploy path directory if it doesn't exist
-            if [ ! -d "$DEPLOY_PATH" ]; then
-              echo "⚠️  Deploy directory $DEPLOY_PATH does not exist. Creating it..."
-              mkdir -p "$DEPLOY_PATH"
+            # Validate PROJECT_ROOT
+            if [[ "$PROJECT_ROOT" != "/srv/codeqlick/chatroulette" ]]; then
+              echo "❌ Error: PROJECT_ROOT must be /srv/codeqlick/chatroulette"
+              echo "📁 Current PROJECT_ROOT: $PROJECT_ROOT"
+              exit 1
             fi
             
             # Create project root directory if it doesn't exist
             if [ ! -d "$PROJECT_ROOT" ]; then
               echo "⚠️  Project root directory $PROJECT_ROOT does not exist. Creating it..."
               mkdir -p "$PROJECT_ROOT"
+            fi
+            
+            # Create deploy path directory if it doesn't exist
+            if [ ! -d "$DEPLOY_PATH" ]; then
+              echo "⚠️  Deploy directory $DEPLOY_PATH does not exist. Creating it..."
+              mkdir -p "$DEPLOY_PATH"
             fi
             
             # Clone or update frontend repository in DEPLOY_PATH
