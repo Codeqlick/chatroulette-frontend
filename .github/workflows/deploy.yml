@@ -134,11 +134,23 @@ jobs:
               exit 1
             fi
             
+            # Ensure DEPLOY_PATH is an absolute path
+            if [[ ! "$DEPLOY_PATH" =~ ^/ ]]; then
+              echo "❌ Error: DEPLOY_PATH must be an absolute path (e.g., /srv/codeqlick/chatroulette/frontend)"
+              exit 1
+            fi
+            
             echo "📂 Deploy path: $DEPLOY_PATH"
             
-            # Calculate project root (parent of frontend directory)
+            # Calculate project root (parent directory of frontend)
             PROJECT_ROOT="$(dirname "$DEPLOY_PATH")"
             echo "📁 Project root: $PROJECT_ROOT"
+            
+            # Create deploy path directory if it doesn't exist
+            if [ ! -d "$DEPLOY_PATH" ]; then
+              echo "⚠️  Deploy directory $DEPLOY_PATH does not exist. Creating it..."
+              mkdir -p "$DEPLOY_PATH"
+            fi
             
             # Create project root directory if it doesn't exist
             if [ ! -d "$PROJECT_ROOT" ]; then
@@ -146,9 +158,9 @@ jobs:
               mkdir -p "$PROJECT_ROOT"
             fi
             
-            # Clone repository if it doesn't exist, or update if it does
-            cd "$PROJECT_ROOT" || {
-              echo "❌ Error: Failed to change to project root $PROJECT_ROOT"
+            # Clone or update frontend repository in DEPLOY_PATH
+            cd "$DEPLOY_PATH" || {
+              echo "❌ Error: Failed to change to deploy path $DEPLOY_PATH"
               exit 1
             }
             
@@ -168,43 +180,85 @@ jobs:
               git clean -fd
             else
               echo "📥 Repository not found or invalid. Setting up repository..."
-              
               # If directory exists but is not a git repo, initialize git in place
               if [ "$(ls -A . 2>/dev/null)" ]; then
                 echo "⚠️  Directory exists but is not a git repository. Initializing git in place..."
                 git init
-                git remote add origin "https://github.com/${{ github.repository }}.git" 2>/dev/null || {
-                  git remote set-url origin "https://github.com/${{ github.repository }}.git"
-                }
+                git remote add origin "https://github.com/${{ github.repository }}.git"
                 if [ -n "${GITHUB_TOKEN:-}" ]; then
                   git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
                 fi
                 git fetch origin main
                 git reset --hard origin/main
                 git clean -fd
-                echo "✅ Repository initialized and updated"
               else
                 # Directory is empty, clone fresh
-                echo "📥 Cloning repository into empty directory..."
+                echo "📥 Cloning repository..."
                 REPO_URL="https://github.com/${{ github.repository }}.git"
                 if [ -n "${GITHUB_TOKEN:-}" ]; then
                   REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
                 fi
                 git clone --branch main --single-branch --depth 1 "$REPO_URL" .
-                echo "✅ Repository cloned successfully"
               fi
+              echo "✅ Repository initialized and updated"
             fi
             
-            # Verify docker-compose.production.yml exists in project root
+            # Change to project root to execute docker-compose
+            cd "$PROJECT_ROOT" || {
+              echo "❌ Error: Failed to change to project root $PROJECT_ROOT"
+              exit 1
+            }
+            
+            # Copy docker-compose.production.yml to PROJECT_ROOT if it doesn't exist
             COMPOSE_PATH="${COMPOSE_FILE:-$DEFAULT_COMPOSE_FILE}"
             if [ ! -f "$COMPOSE_PATH" ]; then
-              echo "❌ Error: $COMPOSE_PATH not found in $PROJECT_ROOT"
-              echo "📋 Available files in project root:"
-              ls -la || true
-              exit 1
+              echo "⚠️  $COMPOSE_PATH not found in project root. Copying from frontend repository..."
+              if [ -f "$DEPLOY_PATH/$COMPOSE_PATH" ]; then
+                cp "$DEPLOY_PATH/$COMPOSE_PATH" "$PROJECT_ROOT/$COMPOSE_PATH"
+                echo "✅ Copied $COMPOSE_PATH to project root"
+              else
+                echo "❌ Error: $COMPOSE_PATH not found in $DEPLOY_PATH either"
+                echo "📋 Available files in deploy path:"
+                ls -la "$DEPLOY_PATH" || true
+                exit 1
+              fi
+            else
+              echo "✅ Found $COMPOSE_PATH in project root"
             fi
             
-            echo "✅ Found $COMPOSE_PATH in project root"
+            # Copy required configuration files from frontend repository if they exist and are not in PROJECT_ROOT
+            # Note: Backend should have created these first, but we copy from frontend as fallback
+            echo "📋 Checking configuration files in project root..."
+            
+            # Copy scripts directory if it exists in frontend and not in PROJECT_ROOT
+            if [ -d "$DEPLOY_PATH/scripts" ] && [ ! -d "$PROJECT_ROOT/scripts" ]; then
+              echo "📁 Copying scripts directory from frontend..."
+              cp -r "$DEPLOY_PATH/scripts" "$PROJECT_ROOT/scripts"
+              echo "✅ Copied scripts directory"
+            fi
+            
+            # Copy nginx directory if it exists in frontend and not in PROJECT_ROOT
+            if [ -d "$DEPLOY_PATH/nginx" ] && [ ! -d "$PROJECT_ROOT/nginx" ]; then
+              echo "📁 Copying nginx directory from frontend..."
+              cp -r "$DEPLOY_PATH/nginx" "$PROJECT_ROOT/nginx"
+              echo "✅ Copied nginx directory"
+            fi
+            
+            # Copy prometheus directory if it exists in frontend and not in PROJECT_ROOT
+            if [ -d "$DEPLOY_PATH/prometheus" ] && [ ! -d "$PROJECT_ROOT/prometheus" ]; then
+              echo "📁 Copying prometheus directory from frontend..."
+              cp -r "$DEPLOY_PATH/prometheus" "$PROJECT_ROOT/prometheus"
+              echo "✅ Copied prometheus directory"
+            fi
+            
+            # Copy grafana directory if it exists in frontend and not in PROJECT_ROOT
+            if [ -d "$DEPLOY_PATH/grafana" ] && [ ! -d "$PROJECT_ROOT/grafana" ]; then
+              echo "📁 Copying grafana directory from frontend..."
+              cp -r "$DEPLOY_PATH/grafana" "$PROJECT_ROOT/grafana"
+              echo "✅ Copied grafana directory"
+            fi
+            
+            echo "✅ Configuration files checked"
             
             # Check if .env.production exists, create if it doesn't
             if [ ! -f ".env.production" ]; then
@@ -240,6 +294,16 @@ jobs:
             docker-compose -f "$COMPOSE_PATH" pull frontend || true
             docker-compose -f "$COMPOSE_PATH" build --no-cache frontend
             docker-compose -f "$COMPOSE_PATH" up -d frontend
+            
+            # Wait for frontend health check (if available)
+            echo "⏳ Waiting for frontend to be ready..."
+            sleep 5
+            
+            # Restart nginx to pick up frontend changes
+            echo "🔄 Restarting nginx to pick up frontend changes..."
+            docker-compose -f "$COMPOSE_PATH" restart nginx || {
+              echo "⚠️  Nginx not running yet, will be started when backend deploys"
+            }
             
             echo "✅ Frontend deployment completed"
             docker-compose -f "$COMPOSE_PATH" ps
