@@ -312,39 +312,54 @@ jobs:
             echo "✅ Configuration files checked"
             
             # Check if .env.production exists, create if it doesn't
-            if [ ! -f ".env.production" ]; then
+            ENV_FILE=".env.production"
+            if [ ! -f "$ENV_FILE" ]; then
               echo "⚠️  .env.production not found. Creating from template..."
               {
                 echo "# Variables de entorno para producción"
                 echo "# IMPORTANTE: Actualizar estos valores con los secrets reales"
                 echo ""
                 echo "# PostgreSQL"
-                echo "POSTGRES_USER=codeqlick"
-                echo "POSTGRES_PASSWORD=CHANGE_ME_POSTGRES_PASSWORD"
-                echo "POSTGRES_DB=codeqlick"
+                echo "POSTGRES_USER=${POSTGRES_USER:-codeqlick}"
+                echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-CHANGE_ME_POSTGRES_PASSWORD}"
+                echo "POSTGRES_DB=${POSTGRES_DB:-codeqlick}"
                 echo "POSTGRES_HOST=postgres"
                 echo "POSTGRES_PORT=5432"
                 echo ""
                 echo "# Redis"
-                echo "REDIS_PASSWORD=CHANGE_ME_REDIS_PASSWORD"
+                echo "REDIS_PASSWORD=${REDIS_PASSWORD:-CHANGE_ME_REDIS_PASSWORD}"
                 echo "REDIS_HOST=redis"
                 echo "REDIS_PORT=6379"
                 echo ""
                 echo "# Frontend"
                 echo "VITE_API_URL=https://api.codeqlick.com/api/v1"
                 echo "VITE_WS_URL=wss://api.codeqlick.com"
-              } > .env.production
+              } > "$ENV_FILE"
               echo "⚠️  Created .env.production with default values. Please update with real secrets!"
               echo "⚠️  You should configure this file manually on the VPS with the correct production values."
             else
               echo "✅ Found .env.production"
             fi
             
+            # Verify .env.production exists and show its location
+            if [ ! -f "$ENV_FILE" ]; then
+              echo "❌ Error: Failed to create $ENV_FILE"
+              echo "📂 Current directory: $(pwd)"
+              echo "📋 Files in current directory:"
+              ls -la | head -20
+              exit 1
+            fi
+            
+            ENV_FILE_ABS="$(cd "$(dirname "$ENV_FILE")" && pwd)/$(basename "$ENV_FILE")"
+            echo "📄 Using env file: $ENV_FILE_ABS"
+            echo "📋 Env file contents (first 5 lines):"
+            head -5 "$ENV_FILE" || true
+            
             # Deploy frontend
             echo "🔨 Building and deploying frontend..."
-            docker-compose -f "$COMPOSE_PATH" pull frontend || true
-            docker-compose -f "$COMPOSE_PATH" build --no-cache frontend
-            docker-compose -f "$COMPOSE_PATH" up -d frontend
+            docker-compose -f "$COMPOSE_PATH" --env-file "$ENV_FILE" pull frontend || true
+            docker-compose -f "$COMPOSE_PATH" --env-file "$ENV_FILE" build --no-cache frontend
+            docker-compose -f "$COMPOSE_PATH" --env-file "$ENV_FILE" up -d frontend
             
             # Wait for frontend health check (if available)
             echo "⏳ Waiting for frontend to be ready..."
@@ -352,10 +367,10 @@ jobs:
             
             # Restart nginx to pick up frontend changes
             echo "🔄 Restarting nginx to pick up frontend changes..."
-            docker-compose -f "$COMPOSE_PATH" restart nginx || {
+            docker-compose -f "$COMPOSE_PATH" --env-file "$ENV_FILE" restart nginx || {
               echo "⚠️  Nginx not running yet, will be started when backend deploys"
             }
             
             echo "✅ Frontend deployment completed"
-            docker-compose -f "$COMPOSE_PATH" ps
+            docker-compose -f "$COMPOSE_PATH" --env-file "$ENV_FILE" ps
 
