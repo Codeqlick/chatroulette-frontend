@@ -206,6 +206,35 @@ jobs:
             
             echo "✅ Found $COMPOSE_PATH in project root"
             
+            # Check if .env.production exists, create if it doesn't
+            if [ ! -f ".env.production" ]; then
+              echo "⚠️  .env.production not found. Creating from template..."
+              cat > .env.production << 'EOF'
+# Variables de entorno para producción
+# IMPORTANTE: Actualizar estos valores con los secrets reales
+
+# PostgreSQL
+POSTGRES_USER=codeqlick
+POSTGRES_PASSWORD=CHANGE_ME_POSTGRES_PASSWORD
+POSTGRES_DB=codeqlick
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+
+# Redis
+REDIS_PASSWORD=CHANGE_ME_REDIS_PASSWORD
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+# Frontend
+VITE_API_URL=https://api.codeqlick.com/api/v1
+VITE_WS_URL=wss://api.codeqlick.com
+EOF
+              echo "⚠️  Created .env.production with default values. Please update with real secrets!"
+              echo "⚠️  You should configure this file manually on the VPS with the correct production values."
+            else
+              echo "✅ Found .env.production"
+            fi
+            
             # Deploy frontend
             echo "🔨 Building and deploying frontend..."
             docker-compose -f "$COMPOSE_PATH" pull frontend || true
