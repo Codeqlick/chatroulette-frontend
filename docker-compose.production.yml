@@ -1,0 +1,323 @@
+# ============================================
+# ESTRUCTURA VPS
+# ============================================
+# Este docker-compose está configurado para la estructura del VPS:
+# /srv/codeqlick/chatroulette/  - Proyecto principal
+# /srv/codeqlick/shared/        - Configuración compartida
+# /srv/infrastructure/          - Datos de PostgreSQL y Redis
+#
+# ============================================
+# VARIABLES DE ENTORNO REQUERIDAS
+# ============================================
+# Crear archivo .env.production en la raíz del proyecto con:
+#
+# REQUERIDAS (configurar en .env.production líneas 11-21):
+#   POSTGRES_USER=codeqlick
+#   POSTGRES_PASSWORD=tu_password_segura_postgres
+#   POSTGRES_DB=codeqlick
+#   REDIS_PASSWORD=tu_password_segura_redis
+#   NOTA: POSTGRES_HOST y REDIS_HOST no son necesarios ya que usamos nombres de servicio
+#   VITE_API_URL=https://api.codeqlick.com/api/v1
+#   VITE_WS_URL=wss://api.codeqlick.com
+#
+# OPCIONALES (con defaults):
+#   POSTGRES_USER (default: codeqlick)
+#   POSTGRES_DB (default: codeqlick)
+#
+# ============================================
+# VARIABLES DEL BACKEND
+# ============================================
+# El backend requiere un archivo backend/.env.production separado
+# Ver backend/.env.production.example para la lista completa
+# Variables críticas incluyen:
+#   - JWT_SECRET (generar con: openssl rand -base64 32)
+#   - CORS_ORIGIN (debe ser: https://codeqlick.com)
+#   - DATABASE_URL (se construye automáticamente desde POSTGRES_*)
+#   - REDIS_URL (se construye automáticamente desde REDIS_*)
+#   - Mailgun credentials (EMAIL_FROM, MAILGUN_API_KEY, etc.)
+#
+# ============================================
+# POSTGRES Y REDIS EN LA VPS
+# ============================================
+# PostgreSQL y Redis se levantan junto con frontend y backend en este docker-compose.
+# Las variables se configuran en .env.production (líneas 11-21)
+
+services:
+  # Init container para arreglar permisos y detectar/limpiar bases de datos corruptas
+  postgres-init:
+    image: postgres:15-alpine
+    container_name: codeqlick-postgres-init
+    user: root
+    volumes:
+      - /srv/infrastructure/postgres/data:/var/lib/postgresql/data
+    command:
+      - sh
+      - -c
+      - |
+        echo '🔧 Inicializando directorio de PostgreSQL...';
+        POSTGRES_UID=$$(id -u postgres);
+        POSTGRES_GID=$$(id -g postgres);
+        echo "UID: $$POSTGRES_UID, GID: $$POSTGRES_GID";
+        mkdir -p /var/lib/postgresql/data;
+        
+        # Verificar si existe una base de datos válida
+        # Una base de datos válida debe tener PG_VERSION Y postgresql.conf Y base/
+        DB_VALID=false;
+        if [ -f /var/lib/postgresql/data/PG_VERSION ] && [ -f /var/lib/postgresql/data/postgresql.conf ] && [ -d /var/lib/postgresql/data/base ]; then
+          echo '✅ Base de datos válida detectada (PG_VERSION + postgresql.conf + base/)';
+          echo '🔧 Solo arreglando permisos...';
+          DB_VALID=true;
+        else
+          # Si no hay base de datos válida, eliminar y recrear el directorio completamente
+          if [ -n "$$(ls -A /var/lib/postgresql/data 2>/dev/null)" ]; then
+            echo '⚠️  Directorio no vacío pero sin base de datos válida detectada';
+            echo '🧹 Eliminando y recreando directorio para permitir inicialización limpia...';
+            
+            # Desactivar set -e temporalmente para permitir limpieza agresiva
+            set +e;
+            
+            # Método más seguro: eliminar el directorio completo y recrearlo
+            # Primero, dar permisos completos para poder eliminar
+            chmod -R 777 /var/lib/postgresql/data 2>/dev/null || true;
+            chown -R root:root /var/lib/postgresql/data 2>/dev/null || true;
+            
+            # Eliminar el directorio completo
+            rm -rf /var/lib/postgresql/data;
+            
+            # Recrear el directorio vacío
+            mkdir -p /var/lib/postgresql/data;
+            
+            # Reactivar set -e para verificaciones críticas
+            set -e;
+            
+            # Verificar que el directorio esté completamente vacío
+            REMAINING=$$(ls -A /var/lib/postgresql/data 2>/dev/null | wc -l);
+            if [ "$$REMAINING" -eq 0 ]; then
+              echo "✅ Directorio eliminado y recreado, PostgreSQL inicializará desde cero";
+            else
+              echo "❌ Error: El directorio recreado no está vacío ($$REMAINING archivos)";
+              echo "   Contenido:";
+              ls -la /var/lib/postgresql/data/ | head -10;
+              exit 1;
+            fi;
+          else
+            echo 'ℹ️  Directorio vacío';
+            echo '🔧 Arreglando permisos (PostgreSQL inicializará automáticamente)...';
+          fi;
+        fi;
+        
+        # Arreglar permisos finales
+        chown -R $$POSTGRES_UID:$$POSTGRES_GID /var/lib/postgresql/data;
+        chmod -R 750 /var/lib/postgresql/data;
+        
+        # Verificación final
+        echo '';
+        echo '📋 Verificación final del directorio:';
+        ls -la /var/lib/postgresql/data/ | head -10 || echo "  (directorio vacío o sin permisos de lectura)";
+        echo '';
+        echo '✅ Inicialización completada';
+    restart: "no"
+    networks:
+      - codeqlick-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: codeqlick-postgres
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    volumes:
+      - /srv/infrastructure/postgres/data:/var/lib/postgresql/data
+    healthcheck:
+      # Verificar que PostgreSQL acepta conexiones y puede ejecutar queries
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-codeqlick} && psql -U ${POSTGRES_USER:-codeqlick} -d postgres -c "SELECT 1" > /dev/null 2>&1']
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
+    depends_on:
+      - postgres-init
+    networks:
+      - codeqlick-network
+
+  # Contenedor para crear usuario y base de datos si no existen
+  postgres-setup:
+    image: postgres:15-alpine
+    container_name: codeqlick-postgres-setup
+    env_file:
+      - .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      TARGET_USER: cq_chatroulette
+      TARGET_DB: codeqlick_chatroulette_db
+    volumes:
+      - ./scripts/postgres-setup.sh:/scripts/postgres-setup.sh:ro
+    command: sh /scripts/postgres-setup.sh
+    restart: "no"
+    networks:
+      - codeqlick-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: codeqlick-redis
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    command: ["sh", "/usr/local/bin/redis-entrypoint.sh"]
+    volumes:
+      - /srv/infrastructure/redis/data:/data
+      - ./scripts/redis/redis-entrypoint.sh:/usr/local/bin/redis-entrypoint.sh:ro
+    healthcheck:
+      # Healthcheck robusto: usar sh -c para expandir variables correctamente
+      # Si REDIS_PASSWORD está vacío, usar ping sin autenticación
+      # Si REDIS_PASSWORD está definido, usar -a para autenticación
+      test: ['CMD-SHELL', 'set -e; if [ -n "$$REDIS_PASSWORD" ]; then redis-cli --no-auth-warning -a "$$REDIS_PASSWORD" ping | grep -q PONG; else redis-cli ping | grep -q PONG; fi']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - codeqlick-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: codeqlick-backend
+    restart: unless-stopped
+    env_file:
+      - .env.production
+      - ./backend/.env.production
+    environment:
+      - NODE_ENV=production
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    volumes:
+      # Logs del backend en estructura VPS
+      - /srv/codeqlick/chatroulette/backend/logs:/app/logs
+      # Uploads del backend en estructura VPS
+      - /srv/codeqlick/chatroulette/backend/uploads:/app/uploads
+      # Logs generales de la aplicación
+      - /srv/codeqlick/chatroulette/logs:/app/app-logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health/live', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
+    networks:
+      - codeqlick-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://api.codeqlick.com/api/v1}
+        VITE_WS_URL: ${VITE_WS_URL:-wss://api.codeqlick.com}
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
+    container_name: codeqlick-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    healthcheck:
+      # Verificar que nginx esté corriendo y respondiendo
+      # Método simple: wget devuelve código 0 si la conexión es exitosa
+      test: ['CMD-SHELL', 'wget --quiet --tries=1 --spider --timeout=3 http://localhost/ || exit 1']
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    networks:
+      - codeqlick-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: codeqlick-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Configuración nginx del proyecto
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # Certificados SSL (si están en el host)
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - codeqlick-network
+
+  # Prometheus Metrics Server
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: codeqlick-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /srv/infrastructure/prometheus/data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    depends_on:
+      - backend
+    networks:
+      - codeqlick-network
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: codeqlick-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://grafana.codeqlick.com
+      - GF_INSTALL_PLUGINS=
+    volumes:
+      - /srv/infrastructure/grafana/data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    networks:
+      - codeqlick-network
+
+# Volúmenes para PostgreSQL y Redis
+# Los datos se almacenan en /srv/infrastructure/ según la estructura VPS
+# No se usan volúmenes nombrados de Docker, sino bind mounts directos
+
+networks:
+  codeqlick-network:
+    driver: bridge
+
